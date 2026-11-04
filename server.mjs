@@ -22,6 +22,7 @@ const PROMPT_PATH = path.join(ROOT, "prompts", "brief.md");
 const DEFAULTS = {
   port: 8000,
   allowedTools: [],
+  blockedTools: [],
   schedule: {
     weekdaysOnly: true,
     times: [{ at: "07:50", mode: "morning" }, { at: "16:25", mode: "eod" }],
@@ -32,6 +33,29 @@ const DEFAULTS = {
 };
 // Never available to the brief run, whatever the config says.
 const ALWAYS_DENIED = ["Bash", "Edit", "Write", "NotebookEdit", "WebFetch", "WebSearch", "Task", "Agent"];
+
+// Name fragments that mean a tool can change something. A tool whose name contains any of these
+// as a whole word (split on _, -, and camelCase) is refused, even if brief.config.json lists it.
+const WRITE_WORDS = new Set([
+  "send", "post", "reply", "react", "add", "draft", "create", "update", "edit", "write", "set", "put", "patch",
+  "insert", "modify", "delete", "remove", "archive", "unarchive", "label", "unlabel", "trash", "untrash", "spam", "unspam",
+  "mark", "unmark", "move", "copy", "duplicate", "rename", "forward", "share", "upload", "publish", "schedule",
+  "respond", "rsvp", "invite", "accept", "decline", "cancel", "complete", "apply", "restore", "resolve", "convert",
+  "link", "unlink", "approve", "submit", "spawn", "stop", "pin", "unpin", "join", "leave", "kick", "favorite", "star",
+]);
+const toolWords = (name) => name.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+
+// Returns a reason the tool lists are unsafe, or null if they're fine.
+function checkTools(cfg) {
+  if (!Array.isArray(cfg.allowedTools) || !Array.isArray(cfg.blockedTools)) return "allowedTools and blockedTools must be lists.";
+  for (const t of cfg.allowedTools) {
+    if (typeof t !== "string" || !/^mcp__[A-Za-z0-9_-]+__[A-Za-z0-9_-]+$/.test(t)) return `"${t}" isn't a single MCP tool name. Only exact read-only MCP tools may be allowed.`;
+    const bad = toolWords(t.split("__").pop()).find((w) => WRITE_WORDS.has(w));
+    if (bad) return `"${t}" looks like it can change things ("${bad}"). Brief runs are read-only, so remove it from allowedTools.`;
+  }
+  for (const t of cfg.blockedTools) if (typeof t !== "string" || !t.startsWith("mcp__")) return `blockedTools entry "${t}" isn't an MCP tool name.`;
+  return null;
+}
 
 const log = (...a) => console.log(`[${new Date().toLocaleTimeString()}]`, ...a);
 
@@ -61,8 +85,11 @@ function runClaude(cfg, prompt) {
       "-p",
       "--output-format", "json",
       "--max-turns", String(cfg.maxTurns),
+      // Explicit mode so a "bypass permissions" default in the user's own settings can't apply here.
+      "--permission-mode", "default",
       "--allowedTools", cfg.allowedTools.join(","),
-      "--disallowedTools", ALWAYS_DENIED.join(","),
+      // Deny rules beat allow rules, so this also overrides tools the user pre-approved in their own settings.
+      "--disallowedTools", [...ALWAYS_DENIED, ...cfg.blockedTools].join(","),
     ];
     const child = spawn(cfg.claudeCommand, args, { cwd: ROOT, stdio: ["pipe", "pipe", "pipe"] });
     let out = "", err = "";
@@ -97,6 +124,12 @@ async function generate(mode, { wait = false } = {}) {
   state.configured = cfg.configured && cfg.allowedTools.length > 0;
   if (!state.configured) {
     state.lastError = 'Not set up yet. Open Claude Code in this folder and say "set up Brief Town".';
+    return { started: false, reason: state.lastError };
+  }
+  const unsafe = checkTools(cfg);
+  if (unsafe) {
+    state.lastError = `Brief Town won't run: ${unsafe} Open Claude Code in this folder and say "set up Brief Town" to fix it.`;
+    log(state.lastError);
     return { started: false, reason: state.lastError };
   }
   mode = mode === "morning" || mode === "eod" ? mode : modeFor();
@@ -185,6 +218,12 @@ async function handle(req, res) {
 
 /* ------------------------------------------------------------------ main */
 const args = process.argv.slice(2);
+if (args[0] === "--check") {
+  const c = await loadConfig();
+  const r = c.configured ? checkTools(c) : "brief.config.json is missing.";
+  console.log(r ? `Not safe to run: ${r}` : `OK: ${c.allowedTools.length} read-only tools allowed, ${c.blockedTools.length} write tools explicitly blocked.`);
+  process.exit(r ? 1 : 0);
+}
 if (args[0] === "--once") {
   const r = await generate(args[1], { wait: true });
   if (!r.started) { console.error(r.reason); process.exit(1); }

@@ -1,5 +1,5 @@
 {
-  "_comment": "Copy to brief.config.json (gitignored). Claude Code fills in allowedTools during setup. List ONLY read-only tools: search, list, get, read. Never send, post, reply, react, create, update, delete or draft tools. Tool names depend on how each service is connected in your Claude Code; check with /mcp.",
+  "_comment": "Copy to brief.config.json (gitignored). Claude Code fills in allowedTools during setup. List ONLY read-only tools: search, list, get, read. Never send, post, reply, react, create, update, delete or draft tools. blockedTools: every OTHER tool those services offer (anything that can change something), so they stay denied even if your own Claude Code settings pre-approve them. Tool names depend on how each service is connected in your Claude Code; check with /mcp.",
   "port": 8000,
   "allowedTools": [
     "mcp__<slack-server>__<search-messages-tool>",
@@ -7,6 +7,11 @@
     "mcp__<gmail-server>__<search-threads-tool>",
     "mcp__<gmail-server>__<get-thread-tool>",
     "mcp__<calendar-server>__<list-events-tool>"
+  ],
+  "blockedTools": [
+    "mcp__<slack-server>__<send-message-tool>",
+    "mcp__<gmail-server>__<send-or-draft-tool>",
+    "mcp__<calendar-server>__<create-event-tool>"
   ],
   "schedule": {
     "weekdaysOnly": true,

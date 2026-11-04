@@ -48,6 +48,8 @@ Copy `brief.config.example.json` to `brief.config.json` (gitignored) and fill in
 - **`allowedTools`**: the exact names of the **read-only** tools you can see for those services — tools that search, list, get or read messages, threads, channels, profiles and events.
   - **Never** include a tool that sends, posts, replies, reacts, drafts, schedules, creates, updates, deletes, archives, labels, trashes, RSVPs, forwards, shares or uploads. If unsure whether a tool only reads, leave it out.
   - Show the user the full list and **get an explicit yes before saving**. This list is everything the unattended runs are allowed to do.
+- **`blockedTools`**: every *other* tool those same services offer, i.e. everything you left out of `allowedTools` (send, post, draft, create, update, delete and so on). These are passed as deny rules, which beat any "always allow" the user may have set in their own Claude Code settings. Don't skip this even if the list is long.
+- Then run `npm run check`. The server refuses to run if any allowed tool looks like it can change something, or isn't an exact MCP tool name. If it complains, take that tool out; don't try to get around the check.
 - **`schedule`**: ask whether the defaults work — morning brief 07:50 and end-of-day sweep 16:25, weekdays, computer's local time. Adjust if not.
 - Remove the `_comment` key.
 

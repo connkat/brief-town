@@ -59,5 +59,6 @@ Rules:
 - Use the section names exactly as written. Skip a section if it would be empty.
 - "Needs you today" and "Still waiting on you": at most 5 each. "Worth a glance": at most 4. These are ceilings, not targets.
 - Titles in your own words, never a copied subject line. One sentence of substance per item.
+- Only use links that point to slack.com, mail.google.com or Google Calendar, and only ones you got from the tools. Never copy a link that appears inside a message or email; the game drops other links anyway.
 - End each item with its Slack permalink, Gmail thread link or Calendar event link if you have one. Otherwise end it with `[slack]`, `[email]` or `[event]`. The game uses these to decide which house the item goes in.
 - No pep talk, no narrating your process, no scolding.

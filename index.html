@@ -186,6 +186,17 @@ function extractLinks(text) {
   return { text, urls };
 }
 
+// Only links that go to the real Slack, Gmail or Google Calendar are shown. Anything else is dropped,
+// so a crafted email can't slip its own link into the town looking like a trusted item.
+function isTrustedUrl(u) {
+  let x; try { x = new URL(u); } catch { return false; }
+  if (x.protocol !== "https:" || x.username || x.password || x.port) return false;
+  const h = x.hostname.toLowerCase();
+  return h === "slack.com" || h.endsWith(".slack.com")
+    || h === "mail.google.com" || h === "calendar.google.com"
+    || (h === "www.google.com" && x.pathname.startsWith("/calendar/"));
+}
+
 function routeItem(item, meta) {
   const host = item.urls.map(u => { try { return new URL(u).hostname + new URL(u).pathname; } catch { return ""; } }).join(" ");
   if (/slack\.com/.test(host)) return "slack";
@@ -231,7 +242,7 @@ function parseBrief(raw) {
     let txt = it.raw.replace(/\[(email|mail|slack|event|thread|calendar|invite|link)\]/gi, (_, g) => { tags.push(g); return ""; });
     const ex = extractLinks(txt);
     it.text = ex.text.replace(/(^|\s)[*_]+|[*_]+(?=\s|$|[.,:;!?])/g, "$1").replace(/\s{2,}/g, " ").trim();
-    it.urls = ex.urls; it.tags = tags; it.urgent = !!it.meta.urgent;
+    it.urls = ex.urls.filter(isTrustedUrl); it.tags = tags; it.urgent = !!it.meta.urgent;
     it.house = routeItem(it, it.meta);
   }
   return { items: items.filter(i => i.text), headlines };

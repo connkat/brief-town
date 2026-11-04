@@ -8,6 +8,7 @@
   "scripts": {
     "start": "node server.mjs",
     "brief": "node server.mjs --once",
+    "check": "node server.mjs --check",
     "brief:morning": "node server.mjs --once morning",
     "brief:eod": "node server.mjs --once eod"
   }

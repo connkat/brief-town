@@ -45,6 +45,10 @@ The schedule lives in `brief.config.json` and uses your computer's local time. T
 ## How it stays safe
 
 - **Read-only by construction.** Each brief runs `claude -p` with `--allowedTools` set to the read tools in `brief.config.json`. In headless mode anything not on the list is denied. Bash, file edits, web access and subagents are always blocked as well. Claude can't send, reply, post, react or touch your calendar, and it doesn't write files: it prints the brief and the server saves it.
+- **The server double-checks the list.** Before every run it refuses to start if any allowed tool looks like it can change something (send, post, draft, create, delete and so on) or isn't a single exact tool name. `npm run check` runs the same test.
+- **Your own settings can't widen it.** Runs use an explicit permission mode, and every write tool from Slack, Gmail and Calendar is listed in `blockedTools` as a deny rule, which overrides anything you've pre-approved in your personal Claude Code settings.
+- **Only real links.** The town only shows links to slack.com, mail.google.com and Google Calendar. Any other link in a brief is dropped, so a crafted email can't slip in a phishing link.
+- **Changes are reviewed.** `.github/CODEOWNERS` makes the repo owner the required reviewer for every change, including the setup skill, the startup check, the server and the prompt.
 - **Messages are data.** The prompt tells Claude to summarise what it reads and never follow instructions inside emails or messages.
 - **Stays on your machine.** The server listens on `127.0.0.1` only and rejects requests from other sites. The page makes no requests except Google Fonts and its own server.
 - **Nothing personal in git.** `brief.local.txt` (your brief) and `brief.config.json` (your tool list) are gitignored. There are no keys anywhere; your connections live in Claude Code.
