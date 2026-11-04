@@ -1,0 +1,12 @@
+# Your real brief: never commit
+brief.local.txt
+*.local.txt
+*.local.*
+
+# Secrets
+.env
+.env.*
+
+# OS / tooling
+.DS_Store
+node_modules/

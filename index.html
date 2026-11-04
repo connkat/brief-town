@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brief Town</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1b1b2b; --paper:#f8f4e6; --edge:#3b3b5c; --accent:#e8833a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#14141f;color:var(--paper);font-family:"Press Start 2P",monospace;}
+  body{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:16px 10px 28px;gap:12px}
+  .topbar{width:100%;max-width:960px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .topbar h1{font-size:14px;margin:0;letter-spacing:1px;color:#ffd866;text-shadow:2px 2px 0 #7a3b00}
+  .topbar .sub{font-size:8px;color:#a9a9c8;margin-top:6px;line-height:1.6}
+  .btn{font-family:inherit;font-size:9px;color:var(--ink);background:var(--paper);border:3px solid var(--ink);
+       box-shadow:0 0 0 2px var(--paper),4px 4px 0 2px #000;padding:9px 12px;cursor:pointer}
+  .btn:active{transform:translate(2px,2px);box-shadow:0 0 0 2px var(--paper),2px 2px 0 2px #000}
+  .btn.ghost{background:#2a2a40;color:var(--paper);border-color:var(--paper);box-shadow:none}
+  .stage{position:relative;width:100%;max-width:960px;aspect-ratio:4/3;background:#000;
+         border:4px solid #000;box-shadow:0 0 0 4px #3b3b5c, 0 10px 30px rgba(0,0,0,.6);border-radius:6px;overflow:hidden}
+  canvas{width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+  .dialog{position:absolute;left:2%;right:2%;bottom:3%;min-height:27%;background:var(--paper);color:var(--ink);
+          border:4px solid var(--ink);box-shadow:inset 0 0 0 3px var(--paper), inset 0 0 0 6px #6a6a8a;
+          padding:4.2% 4% 3.2%;display:none;font-size:clamp(9px,1.75vw,15px);line-height:1.75}
+  .dialog.open{display:block}
+  .dialog .name{position:absolute;top:-4px;left:18px;transform:translateY(-100%);background:var(--ink);color:#ffd866;
+          padding:7px 10px 6px;font-size:clamp(8px,1.3vw,11px);border:3px solid var(--paper)}
+  .dialog .tag{font-size:clamp(7px,1.15vw,10px);color:#7a5a20;margin-bottom:6px;letter-spacing:.5px}
+  .dialog .tag.urgent{color:#c0392b}
+  .dialog .text{white-space:pre-wrap;word-wrap:break-word}
+  .dialog .link{display:inline-block;margin-top:8px;font-size:clamp(7px,1.15vw,10px);color:#2a5bd7}
+  .dialog .meter .lvl{font-size:clamp(8px,1.4vw,12px);margin-bottom:10px}
+  .dialog .meter .lvl b{color:#c0392b}
+  .dialog .mrow{display:grid;grid-template-columns:9em 1fr 5.5em;gap:10px;align-items:center;font-size:clamp(7px,1.15vw,10px);margin:5px 0}
+  .dialog .bar{height:12px;border:2px solid var(--ink);background:#e9e2cc;position:relative}
+  .dialog .bar i{position:absolute;left:0;top:0;bottom:0;background:repeating-linear-gradient(90deg,#c0392b 0 6px,#e05a4a 6px 8px)}
+  .dialog .bar i.calm{background:repeating-linear-gradient(90deg,#3f9a40 0 6px,#5cbf55 6px 8px)}
+  .dialog ol.dl{margin:0;padding-left:1.6em;font-size:clamp(7px,1.2vw,11px);line-height:1.9}
+  .dialog ol.dl b{display:inline-block;min-width:6.5em;color:#7a5a20}
+  .dialog .more{position:absolute;right:16px;bottom:10px;animation:bob .6s steps(2) infinite}
+  @keyframes bob{50%{transform:translateY(3px)}}
+  .hud{position:absolute;top:2%;left:2%;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+  .chip{background:rgba(27,27,43,.82);border:2px solid var(--paper);padding:5px 7px;font-size:clamp(6px,1vw,9px);color:var(--paper)}
+  .chip b{color:#ff6b5b}
+  .controls{width:100%;max-width:960px;display:none;justify-content:space-between;align-items:center;padding:4px 10px;user-select:none;-webkit-user-select:none;touch-action:none}
+  .dpad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(3,56px);gap:2px}
+  .dpad button,.ab button{font-family:inherit;background:#2a2a40;color:var(--paper);border:3px solid #55557a;border-radius:8px;font-size:14px;touch-action:none}
+  .dpad button:active,.ab button:active,.dpad button.on{background:#44446a}
+  .ab{display:flex;gap:14px;align-items:center}
+  .ab button{width:64px;height:64px;border-radius:50%;font-size:16px}
+  .ab .a{background:#b03a48;border-color:#e06a78}
+  @media (max-width:820px),(pointer:coarse){.controls{display:flex}}
+  .help{width:100%;max-width:960px;font-size:8px;color:#a9a9c8;line-height:1.9;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .help kbd{background:#2a2a40;border:2px solid #55557a;padding:1px 5px;color:var(--paper);font-family:inherit}
+  .modal{position:fixed;inset:0;background:rgba(10,10,20,.78);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+  .modal.open{display:flex}
+  .panel{width:100%;max-width:720px;background:var(--paper);color:var(--ink);border:4px solid var(--ink);
+         box-shadow:inset 0 0 0 3px var(--paper), inset 0 0 0 6px #6a6a8a;padding:22px}
+  .panel h2{font-size:12px;margin:0 0 10px}
+  .panel p{font-size:8px;line-height:1.9;margin:0 0 12px;color:#3b3b5c}
+  .panel textarea{width:100%;height:280px;font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.45;
+         border:3px solid var(--ink);padding:10px;background:#fffdf5;color:var(--ink);resize:vertical}
+  .panel .row{display:flex;gap:12px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+  .panel .btn.ghost{color:var(--ink);background:transparent;border-color:var(--ink)}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <h1>BRIEF TOWN</h1>
+      <div class="sub" id="subline">Walk into a house to hear what it's holding for you.</div>
+    </div>
+    <button class="btn" id="openBag">MAILBAG: LOAD BRIEF</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="game" width="320" height="240"></canvas>
+    <div class="hud" id="hud"></div>
+    <div class="dialog" id="dialog">
+      <div class="name" id="dName"></div>
+      <div class="tag" id="dTag"></div>
+      <div class="text" id="dText"></div>
+      <a class="link" id="dLink" target="_blank" rel="noopener" style="display:none">OPEN &#8599;</a>
+      <div class="more" id="dMore">&#9660;</div>
+    </div>
+  </div>
+
+  <div class="controls" id="controls">
+    <div class="dpad">
+      <span></span><button data-dir="up">&#9650;</button><span></span>
+      <button data-dir="left">&#9664;</button><span></span><button data-dir="right">&#9654;</button>
+      <span></span><button data-dir="down">&#9660;</button><span></span>
+    </div>
+    <div class="ab">
+      <button class="b" id="btnB">B</button>
+      <button class="a" id="btnA">A</button>
+    </div>
+  </div>
+
+  <div class="help">
+    <div><kbd>&#8592;&#8593;&#8594;&#8595;</kbd>/<kbd>WASD</kbd> walk &nbsp; <kbd>SPACE</kbd>/<kbd>Z</kbd> talk / next &nbsp; <kbd>X</kbd>/<kbd>ESC</kbd> close</div>
+    <div id="sourceNote">Showing: sample briefs</div>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="panel">
+      <h2>THE MAILBAG</h2>
+      <p>Paste today's morning brief and/or EOD sweep, copied straight from your Slack self-DM. You can paste both at once.
+         Each item goes to the right house: Slack links and [slack] go to the Slack house, Gmail links and [email] to the Gmail house, calendar links and [event] to the Calendar house.
+         Anything else is pinned to the town notice board. The text stays in this browser and is never sent anywhere.</p>
+      <textarea id="bagText" spellcheck="false"></textarea>
+      <div class="row">
+        <button class="btn ghost" id="bagSample">USE SAMPLE</button>
+        <button class="btn ghost" id="bagCancel">CANCEL</button>
+        <button class="btn" id="bagLoad">DELIVER TO TOWN</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+"use strict";
+
+/* ---------------------------------------------------------------- sample */
+const SAMPLE = `Monday, Mar 9 · 3h 30m booked — the afternoon runs back to back
+
+Shape of the day
+Quiet morning for focus work, then the Lighthouse demo at 1, the vendor call at 2 and your 1:1 with Priya at 3. Nothing after 4.
+
+Needs you today
+1. The demo dry run clashes with the vendor call — Lighthouse demo prep (1:30–2:15, your invite) overlaps the Northwind vendor call (2:00–2:30). You're the organizer, so moving it is on you. [event]
+2. Sam needs your sign-off on the API rate limits — he proposed 100 req/min per key for launch and is blocked on your yes before he can merge. [email]
+3. Design review feedback is due — Alex asked in #lighthouse-design for your comments on the onboarding flow by end of day. [slack]
+
+Prep for tomorrow
+• Sprint planning, 10:00 — your agenda, and the board still has six unsized tickets. [event]
+• Quarterly roadmap sync, 2:00 — you're presenting the Lighthouse timeline; the slides on the invite are last quarter's.
+
+Worth a glance
+• The staging outage is resolved — Jordan rolled back the config change and posted a write-up. [thread]
+• Finance approved the new monitoring budget — the email came in overnight; nothing for you to do. [email]
+• Riley's question about the feature flag naming was answered by Morgan in the thread. [slack]
+
+*EOD sweep* · Monday
+
+*Still waiting on you* (3)
+1. Sam's rate-limit sign-off — still the same one from this morning; he's still blocked on the merge. [email]
+2. Onboarding flow feedback — Alex pinged again at 3:40pm; the design review is tomorrow morning. [slack]
+3. Changelog for the 2.4 release — you said in standup you'd draft it today and it isn't in the doc yet. [thread]
+
+*You're waiting on them* (2)
+• Vendor security questionnaire — you sent it to Northwind on Thursday and haven't heard back. [email]
+• Load-test results — Casey said they'd share them by Monday. [slack]
+
+*Tomorrow starts with*
+Sprint planning at 10:00 — you own the agenda and six tickets still need sizes, so spend ten minutes on the board before you go in.`;
+
+/* ---------------------------------------------------------------- parser */
+const SECTIONS = {
+  "shape of the day":       { label: "Shape of the day",       house: "board" },
+  "needs you today":        { label: "Needs you today",        urgent: true },
+  "prep for tomorrow":      { label: "Prep for tomorrow",      fallback: "calendar" },
+  "worth a glance":         { label: "Worth a glance" },
+  "still waiting on you":   { label: "Still waiting on you",   urgent: true },
+  "you're waiting on them": { label: "You're waiting on them" },
+  "tomorrow starts with":   { label: "Tomorrow starts with",   fallback: "calendar" },
+};
+const norm = s => s.replace(/[’‘]/g, "'").replace(/[*_~`]/g, "").replace(/\(\d+\)\s*$/, "").replace(/:\s*$/, "").trim().toLowerCase();
+
+function extractLinks(text) {
+  const urls = [];
+  text = text.replace(/<(https?:\/\/[^|>\s]+)(?:\|([^>]*))?>/g, (_, u, l) => { urls.push(u); return l || ""; });
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (_, l, u) => { urls.push(u); return l; });
+  text = text.replace(/https?:\/\/\S+/g, u => { urls.push(u.replace(/[).,]+$/, "")); return ""; });
+  return { text, urls };
+}
+
+function routeItem(item, meta) {
+  const host = item.urls.map(u => { try { return new URL(u).hostname + new URL(u).pathname; } catch { return ""; } }).join(" ");
+  if (/slack\.com/.test(host)) return "slack";
+  if (/mail\.google|gmail/.test(host)) return "gmail";
+  if (/calendar\.google|\/calendar/.test(host)) return "calendar";
+  if (meta.house) return meta.house;
+  const tag = (item.tags[0] || "").toLowerCase();
+  if (tag === "email" || tag === "mail") return "gmail";
+  if (tag === "slack") return "slack";
+  if (tag === "event" || tag === "calendar" || tag === "invite") return "calendar";
+  if (tag === "thread") return /\bemail|emailed|inbox\b/i.test(item.text) ? "gmail" : "slack";
+  if (meta.fallback) return meta.fallback;
+  if (/\b(invite|meeting|standup|agenda|calendar)\b|\b\d{1,2}:\d{2}\b/i.test(item.text)) return "calendar";
+  if (/\bemail|emailed|inbox\b/i.test(item.text)) return "gmail";
+  if (/\bslack|dm|thread|channel\b/i.test(item.text)) return "slack";
+  return "board";
+}
+
+function parseBrief(raw) {
+  const items = [], headlines = [];
+  let section = null, current = null;
+  const push = (text) => {
+    current = { section: section ? section.label : "Note", meta: section || {}, raw: text };
+    items.push(current);
+  };
+  for (let line of raw.split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t || /^-{3,}$/.test(t)) { if (section && !section.prose) current = null; continue; }
+    const key = norm(t);
+    if (SECTIONS[key]) { section = SECTIONS[key]; current = null; continue; }
+    if (!section || /^eod sweep\b/.test(key)) {
+      if (/^eod sweep\b/.test(key)) section = null;
+      headlines.push(t.replace(/[*_]/g, ""));
+      continue;
+    }
+    const bullet = t.match(/^(?:\d+[.)]|[•\-*◦·])\s+(.*)$/);
+    if (bullet) push(bullet[1]);
+    else if (current) current.raw += " " + t;
+    else push(t);
+  }
+  for (const it of items) {
+    const tags = [];
+    let txt = it.raw.replace(/\[(email|mail|slack|event|thread|calendar|invite|link)\]/gi, (_, g) => { tags.push(g); return ""; });
+    const ex = extractLinks(txt);
+    it.text = ex.text.replace(/(^|\s)[*_]+|[*_]+(?=\s|$|[.,:;!?])/g, "$1").replace(/\s{2,}/g, " ").trim();
+    it.urls = ex.urls; it.tags = tags; it.urgent = !!it.meta.urgent;
+    it.house = routeItem(it, it.meta);
+  }
+  return { items: items.filter(i => i.text), headlines };
+}
+
+/* ---------------------------------------------------------------- state */
+let BRIEF = { items: [], headlines: [] };
+let usingSample = true;
+function loadText(text, isSample) {
+  BRIEF = parseBrief(text);
+  usingSample = isSample === true;
+  document.getElementById("sourceNote").textContent = isSample === true
+    ? "Showing: sample briefs"
+    : (typeof isSample === "string" ? "Showing: " + isSample + " · " : "Showing: your pasted brief · ") + new Date().toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
+  const h = BRIEF.headlines[0];
+  document.getElementById("subline").textContent = h ? h : "Walk into a house to hear what it's holding for you.";
+  renderHud();
+}
+function counts(house) {
+  const l = BRIEF.items.filter(i => i.house === house);
+  return { total: l.length, urgent: l.filter(i => i.urgent).length };
+}
+function renderHud() {
+  const hud = document.getElementById("hud");
+  hud.innerHTML = "";
+  for (const [k, label] of [["slack", "SLACK"], ["gmail", "GMAIL"], ["calendar", "CALENDAR"], ["board", "BOARD"]]) {
+    const c = counts(k);
+    const el = document.createElement("div");
+    el.className = "chip";
+    el.innerHTML = `${label} ${c.total}` + (c.urgent ? ` <b>!${c.urgent}</b>` : "");
+    hud.appendChild(el);
+  }
+}
+
+/* ---------------------------------------------------------------- canvas */
+const cv = document.getElementById("game");
+const ctx = cv.getContext("2d");
+ctx.imageSmoothingEnabled = false;
+const T = 16, COLS = 20, ROWS = 15;
+const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w, h); };
+
+const C = {
+  grass: "#6cbf4b", grass2: "#5fae40", grassDot: "#82d35f",
+  path: "#e2cf96", path2: "#cdb67b",
+  leaf: "#2f7a33", leaf2: "#3f9a40", leafHi: "#5cbf55", trunk: "#6b4a2b",
+  water: "#3f86d4", water2: "#5ea3e6", foam: "#bfe3ff",
+  ink: "#1b1b2b", wall: "#f2e6c9", wall2: "#d9c9a3", door: "#7a4b2a", door2: "#5a3518", glass: "#9fd3ff",
+};
+const HOUSES = {
+  slack:    { x: 2,  y: 2, label: "SLACK",    roof: "#6b3fa0", roof2: "#4f2c7a", roofHi: "#8e62c4" },
+  gmail:    { x: 8,  y: 2, label: "GMAIL",    roof: "#cf4436", roof2: "#9c2e24", roofHi: "#e8736a" },
+  calendar: { x: 14, y: 2, label: "CALENDAR", roof: "#3a6fd0", roof2: "#2a509a", roofHi: "#6d97e6" },
+};
+const BOARD = { x: 6, y: 9 };
+const KEEPERS = {
+  slack: {
+    name: "PIP · MESSAGE COURIER", pal: { hat: "#6b3fa0", hair: "#3b2a1a", skin: "#f1c29b", coat: "#c9a7ef", pants: "#3b3b5c" },
+    greet: (n, u) => `Kat! The carrier birds dropped off ${n} note${n > 1 ? "s" : ""} from Slack.` + (u ? ` ${u} of them need${u > 1 ? "" : "s"} you today. Those go first.` : " Nothing urgent in the stack."),
+    empty: "Quiet skies today. No Slack notes for you.", bye: "That's every note. Come back after the next delivery!",
+    floor: "#b98d5a", floor2: "#a57b4b", back: "#5b3d82",
+  },
+  gmail: {
+    name: "MABEL · POSTMASTER", pal: { hat: "#cf4436", hair: "#9a9a9a", skin: "#e7b28a", coat: "#2c3e66", pants: "#22304f" },
+    greet: (n, u) => `Morning, dear. ${n} envelope${n > 1 ? "s" : ""} in your cubby.` + (u ? ` ${u} ${u > 1 ? "are" : "is"} stamped URGENT.` : " None are stamped urgent."),
+    empty: "Your cubby is empty today. Enjoy it while it lasts.", bye: "That's the whole cubby. I'll sort the next batch when it arrives.",
+    floor: "#c9a06c", floor2: "#b58c58", back: "#8a2f27",
+  },
+  calendar: {
+    name: "OREN · CLOCKKEEPER", pal: { hat: "#3a6fd0", hair: "#2a1d12", skin: "#c98f62", coat: "#7f8c9a", pants: "#3b4652", glasses: true },
+    greet: (n, u) => `Tick, tock. I've marked ${n} thing${n > 1 ? "s" : ""} on the big calendar.` + (u ? ` ${u} can't wait past today.` : ""),
+    empty: "The calendar is clear. A rare sight!", bye: "That's everything on the wall. Mind the clock.",
+    floor: "#a9b6c6", floor2: "#97a5b6", back: "#2a4f8f",
+  },
+};
+
+/* deterministic flowers */
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const FLOWERS = [];
+
+/* town tile map: 0 grass, 1 path, 2 tree, 3 water */
+const map = [];
+for (let y = 0; y < ROWS; y++) { map.push([]); for (let x = 0; x < COLS; x++) map[y].push(0); }
+for (let x = 0; x < COLS; x++) { map[0][x] = 2; map[ROWS - 1][x] = 2; }
+for (let y = 0; y < ROWS; y++) { map[y][0] = 2; map[y][COLS - 1] = 2; }
+for (const h of Object.values(HOUSES)) map[6][h.x + 2] = 1;
+for (let x = 2; x <= 17; x++) map[7][x] = 1;
+for (let y = 7; y <= 13; y++) map[y][10] = 1;
+for (let x = 7; x <= 9; x++) map[10][x] = 1;
+for (let y = 9; y <= 11; y++) for (let x = 13; x <= 16; x++) map[y][x] = 3;
+for (const [x, y] of [[2, 10], [3, 12], [2, 12], [17, 13], [18, 12], [12, 12], [4, 9], [16, 7 + 6]]) if (map[y] && map[y][x] === 0) map[y][x] = 2;
+for (let i = 0; i < 26; i++) {
+  const x = 1 + Math.floor(rnd() * 18), y = 8 + Math.floor(rnd() * 6);
+  if (map[y][x] === 0) FLOWERS.push({ x, y, c: rnd() > .5 ? "#ff6b8a" : "#ffe066", ox: 3 + Math.floor(rnd() * 8), oy: 3 + Math.floor(rnd() * 8) });
+}
+
+function houseAt(tx, ty) {
+  for (const [k, h] of Object.entries(HOUSES)) if (tx >= h.x && tx < h.x + 5 && ty >= h.y && ty < h.y + 4) return k;
+  return null;
+}
+function doorOf(k) { const h = HOUSES[k]; return { x: h.x + 2, y: h.y + 3 }; }
+
+/* interior geometry */
+const IN = { ox: 5, oy: 3, w: 10, h: 8 };
+const MAT = { x: IN.ox + 4, y: IN.oy + 7 };
+
+/* ---------------------------------------------------------------- drawing */
+function drawGrass(x, y) {
+  const X = x * T, Y = y * T;
+  R(X, Y, T, T, (x + y) % 2 ? C.grass : C.grass2);
+  R(X + ((x * 7 + y * 3) % 12) + 1, Y + ((x * 5 + y * 11) % 12) + 1, 2, 1, C.grassDot);
+  R(X + ((x * 3 + y * 7) % 11) + 2, Y + ((x * 13 + y * 5) % 10) + 3, 1, 2, C.grassDot);
+}
+function drawPath(x, y) {
+  const X = x * T, Y = y * T;
+  R(X, Y, T, T, C.path);
+  R(X + ((x * 5 + y) % 12) + 1, Y + ((y * 7 + x) % 12) + 2, 2, 2, C.path2);
+  R(X + ((x * 11 + y * 3) % 12) + 2, Y + ((y * 3 + x * 2) % 12) + 1, 1, 1, C.path2);
+}
+function drawTree(x, y) {
+  const X = x * T, Y = y * T;
+  drawGrass(x, y);
+  R(X + 3, Y + 13, 10, 3, "rgba(0,0,0,.22)");
+  R(X + 6, Y + 10, 4, 5, C.trunk);
+  R(X + 2, Y + 3, 12, 8, C.leaf);
+  R(X + 4, Y + 1, 8, 2, C.leaf);
+  R(X + 1, Y + 5, 14, 4, C.leaf);
+  R(X + 3, Y + 3, 9, 5, C.leaf2);
+  R(X + 4, Y + 3, 4, 2, C.leafHi);
+  R(X + 2, Y + 10, 12, 1, "#24602a");
+}
+function drawWater(x, y, t) {
+  const X = x * T, Y = y * T;
+  R(X, Y, T, T, C.water);
+  const s = Math.floor(t / 30) % 2;
+  R(X + 2 + s * 4, Y + 4, 5, 1, C.water2);
+  R(X + 8 - s * 3, Y + 10, 5, 1, C.water2);
+  if (map[y - 1] && map[y - 1][x] !== 3) R(X, Y, T, 2, C.foam);
+  if (map[y][x - 1] !== 3) R(X, Y, 2, T, C.foam);
+  if (map[y][x + 1] !== 3) R(X + T - 2, Y, 2, T, C.foam);
+  if (map[y + 1] && map[y + 1][x] !== 3) R(X, Y + T - 2, T, 2, C.foam);
+}
+function drawHouse(k, t) {
+  const h = HOUSES[k], X = h.x * T, Y = h.y * T;
+  R(X + 2, Y + 62, 78, 3, "rgba(0,0,0,.2)");
+  /* walls */
+  R(X + 4, Y + 30, 72, 34, C.wall);
+  R(X + 4, Y + 60, 72, 4, C.wall2);
+  R(X + 4, Y + 30, 2, 34, C.wall2); R(X + 74, Y + 30, 2, 34, C.wall2);
+  /* windows */
+  for (const wx of [X + 11, X + 57]) {
+    R(wx - 1, Y + 37, 14, 12, C.ink);
+    R(wx, Y + 38, 12, 10, C.glass);
+    R(wx + 5, Y + 38, 2, 10, C.ink); R(wx, Y + 42, 12, 2, C.ink);
+    R(wx + 1, Y + 39, 3, 2, "#e8f6ff");
+    R(wx - 2, Y + 49, 16, 2, C.wall2);
+  }
+  /* door */
+  R(X + 33, Y + 40, 14, 24, C.ink);
+  R(X + 34, Y + 41, 12, 23, C.door);
+  R(X + 34, Y + 41, 12, 2, C.door2);
+  R(X + 39, Y + 43, 2, 20, C.door2);
+  R(X + 43, Y + 52, 2, 2, "#f2c14e");
+  /* roof */
+  R(X, Y + 4, 80, 28, h.roof);
+  for (let r = 0; r < 4; r++) R(X, Y + 10 + r * 6, 80, 1, h.roof2);
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 10; c++) R(X + ((c * 8 + r * 4) % 80), Y + 5 + r * 6, 1, 5, h.roof2);
+  R(X + 4, Y, 72, 5, h.roofHi);
+  R(X, Y + 30, 80, 3, h.roof2);
+  R(X, Y + 33, 80, 1, C.ink);
+  /* sign plank */
+  const label = h.label;
+  ctx.font = '8px "Press Start 2P"';
+  const tw = ctx.measureText(label).width;
+  const sx = X + 40 - tw / 2 - 4;
+  R(sx - 1, Y + 12, tw + 10, 13, C.ink);
+  R(sx, Y + 13, tw + 8, 11, "#f8f4e6");
+  ctx.fillStyle = C.ink; ctx.textBaseline = "top";
+  ctx.fillText(label, sx + 4, Y + 15);
+  /* little icon above door */
+  drawIcon(k, X + 36, Y + 32);
+  /* urgent bubble */
+  const c = counts(k);
+  if (c.total) {
+    const bob = Math.floor(t / 20) % 2;
+    const bx = X + 60, by = Y - 6 + bob;
+    R(bx - 1, by - 1, 16, 14, C.ink);
+    R(bx, by, 14, 12, c.urgent ? "#ff5a4f" : "#ffffff");
+    R(bx + 5, by + 12, 4, 2, C.ink);
+    ctx.font = '8px "Press Start 2P"';
+    ctx.fillStyle = c.urgent ? "#ffffff" : C.ink;
+    const s = c.urgent ? "!" : String(c.total);
+    ctx.fillText(s, bx + 7 - ctx.measureText(s).width / 2, by + 2);
+  }
+}
+function drawIcon(k, x, y) {
+  R(x - 1, y - 1, 10, 9, C.ink);
+  R(x, y, 8, 7, "#f8f4e6");
+  if (k === "slack") { R(x + 2, y + 1, 1, 5, "#6b3fa0"); R(x + 5, y + 1, 1, 5, "#6b3fa0"); R(x + 1, y + 2, 6, 1, "#6b3fa0"); R(x + 1, y + 4, 6, 1, "#6b3fa0"); }
+  if (k === "gmail") { R(x + 1, y + 1, 6, 5, "#ffffff"); R(x + 1, y + 1, 1, 1, "#cf4436"); R(x + 2, y + 2, 1, 1, "#cf4436"); R(x + 3, y + 3, 2, 1, "#cf4436"); R(x + 5, y + 2, 1, 1, "#cf4436"); R(x + 6, y + 1, 1, 1, "#cf4436"); }
+  if (k === "calendar") { R(x + 1, y + 1, 6, 2, "#3a6fd0"); for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) R(x + 1 + i * 2, y + 4 + j * 2, 1, 1, "#3a6fd0"); }
+}
+function drawBoard(t) {
+  const X = BOARD.x * T, Y = BOARD.y * T;
+  R(X + 2, Y + 13, 12, 3, "rgba(0,0,0,.22)");
+  R(X + 3, Y + 8, 2, 7, C.door2); R(X + 11, Y + 8, 2, 7, C.door2);
+  R(X, Y + 1, 16, 10, C.ink);
+  R(X + 1, Y + 2, 14, 8, "#c99a5b");
+  R(X + 3, Y + 3, 5, 5, "#f8f4e6"); R(X + 9, Y + 4, 4, 4, "#fff3b0");
+  R(X + 4, Y + 4, 3, 1, "#888"); R(X + 4, Y + 6, 3, 1, "#888");
+  if (counts("board").total) {
+    const bob = Math.floor(t / 20) % 2;
+    R(X + 5, Y - 9 + bob, 6, 8, C.ink); R(X + 6, Y - 8 + bob, 4, 6, "#ffffff");
+    R(X + 7, Y - 7 + bob, 2, 3, C.ink); R(X + 7, Y - 3 + bob, 2, 1, C.ink);
+  }
+}
+function drawPerson(px, py, dir, frame, p) {
+  const X = Math.round(px), Y = Math.round(py);
+  R(X + 3, Y + 14, 10, 2, "rgba(0,0,0,.25)");
+  /* legs */
+  const l = frame === 1 ? -1 : 0, r = frame === 2 ? -1 : 0;
+  R(X + 5, Y + 12 + l, 2, 3, p.pants); R(X + 9, Y + 12 + r, 2, 3, p.pants);
+  R(X + 5, Y + 14 + l, 2, 1, C.ink); R(X + 9, Y + 14 + r, 2, 1, C.ink);
+  /* body */
+  R(X + 4, Y + 8, 8, 5, p.coat);
+  R(X + 4, Y + 12, 8, 1, "rgba(0,0,0,.2)");
+  const sw = frame ? 1 : 0;
+  R(X + 3, Y + 9 + (frame === 1 ? sw : 0), 1, 3, p.coat); R(X + 12, Y + 9 + (frame === 2 ? sw : 0), 1, 3, p.coat);
+  R(X + 3, Y + 12, 1, 1, p.skin); R(X + 12, Y + 12, 1, 1, p.skin);
+  if (dir === "up" && p.pack) { R(X + 5, Y + 8, 6, 4, p.pack); R(X + 5, Y + 8, 6, 1, "rgba(0,0,0,.25)"); }
+  /* head */
+  R(X + 4, Y + 2, 8, 7, p.skin);
+  R(X + 3, Y + 1, 10, 3, p.hat); R(X + 4, Y, 8, 1, p.hat);
+  R(X + 3, Y + 3, 10, 1, "rgba(0,0,0,.18)");
+  if (dir === "up") { R(X + 4, Y + 4, 8, 4, p.hair); }
+  else if (dir === "down") {
+    R(X + 4, Y + 4, 1, 3, p.hair); R(X + 11, Y + 4, 1, 3, p.hair);
+    R(X + 6, Y + 5, 1, 2, C.ink); R(X + 9, Y + 5, 1, 2, C.ink);
+    if (p.glasses) { R(X + 5, Y + 5, 3, 1, C.ink); R(X + 8, Y + 5, 3, 1, C.ink); }
+    R(X + 7, Y + 7, 2, 1, "rgba(150,60,60,.5)");
+  } else if (dir === "left") {
+    R(X + 9, Y + 4, 3, 4, p.hair); R(X + 5, Y + 5, 1, 2, C.ink);
+    if (p.glasses) R(X + 4, Y + 5, 3, 1, C.ink);
+  } else {
+    R(X + 4, Y + 4, 3, 4, p.hair); R(X + 10, Y + 5, 1, 2, C.ink);
+    if (p.glasses) R(X + 9, Y + 5, 3, 1, C.ink);
+  }
+}
+const KAT = { hat: "#2aa198", hair: "#5a3a22", skin: "#f5c9a0", coat: "#e8833a", pants: "#34495e", pack: "#b03a48" };
+
+function drawDog(t) {
+  const L = dogLevel();
+  const fur = "#c98a4b", light = "#f3d9b1", dark = "#7a4a22";
+  const X = Math.round(DOG.px), Y = Math.round(DOG.py);
+  const hop = (L.key === "zoomies" && DOG.moving) ? -(Math.floor(DOG.anim / 4) % 2) : 0;
+  ctx.save();
+  if (DOG.face < 0) { ctx.translate(X * 2 + 16, 0); ctx.scale(-1, 1); }
+  const D2 = (x, y, w, h, c) => R(X + x, Y + y + hop, w, h, c);
+  R(X + 3, Y + 14, 11, 2, "rgba(0,0,0,.22)");
+  if (L.key === "nap") {
+    D2(2, 9, 11, 5, fur); D2(4, 12, 7, 2, light);
+    D2(10, 7, 5, 5, fur); D2(14, 10, 2, 2, light); D2(15, 10, 1, 1, C.ink);
+    D2(11, 9, 2, 1, C.ink); D2(10, 6, 2, 2, dark);
+    D2(0, 11, 3, 2, fur);
+  } else {
+    const f = Math.floor(DOG.anim / 5) % 2;
+    const sitting = !DOG.moving && L.key === "alert";
+    if (sitting) { D2(4, 9, 7, 5, fur); D2(4, 13, 3, 2, dark); D2(9, 13, 2, 2, fur); }
+    else {
+      D2(3, 8, 9, 4, fur); D2(5, 11, 5, 1, light);
+      D2(4, 12 - (DOG.moving && f ? 1 : 0), 2, 3, fur); D2(9, 12 - (DOG.moving && !f ? 1 : 0), 2, 3, fur);
+      D2(4, 14, 2, 1, dark); D2(9, 14, 2, 1, dark);
+    }
+    D2(10, 3, 5, 6, fur); D2(13, 6, 3, 3, light); D2(15, 6, 1, 1, C.ink);
+    D2(12, 5, 1, 1, C.ink); D2(10, 1, 2, 4, dark);
+    D2(10, 9, 4, 1, "#c0392b"); D2(12, 10, 1, 1, "#f2c14e");
+    if (DOG.bark > 0) D2(14, 8, 2, 1, "#a83a3a");
+    const wag = Math.floor(t / (L.key === "zoomies" ? 3 : L.key === "pacing" ? 5 : 10)) % 2;
+    if (sitting) D2(2, 11 + wag, 3, 2, fur); else D2(1, wag ? 5 : 7, 2, 3, fur);
+  }
+  ctx.restore();
+  /* mood marks above the dog (never mirrored) */
+  ctx.font = '8px "Press Start 2P"'; ctx.textBaseline = "top";
+  if (L.key === "nap") {
+    const z = Math.floor(t / 40) % 3;
+    for (let i = 0; i <= z; i++) { ctx.fillStyle = "#f8f4e6"; ctx.fillText("z", X + 12 + i * 4, Y - 2 - i * 5); }
+  } else if (L.key !== "alert" || DOG.bark > 0) {
+    const s = L.key === "zoomies" ? "!!" : "!";
+    const bob = Math.floor(t / 10) % 2, w = s.length * 8 + 4;
+    R(X + 8 - w / 2 - 1, Y - 13 + bob, w + 2, 12, C.ink); R(X + 8 - w / 2, Y - 12 + bob, w, 10, "#ff5a4f");
+    ctx.fillStyle = "#fff"; ctx.fillText(s, X + 8 - w / 2 + 2, Y - 11 + bob);
+  }
+  if (DOG.bark > 0) {
+    ctx.fillStyle = C.ink; ctx.fillText("WOOF", X + (DOG.face > 0 ? 16 : -30) + 1, Y - 3 + 1);
+    ctx.fillStyle = "#ffd866"; ctx.fillText("WOOF", X + (DOG.face > 0 ? 16 : -30), Y - 3);
+  }
+}
+
+function dogCanStand(tx, ty) {
+  if (ty < 8 || ty > 13 || tx < 1 || tx > 18) return false;
+  const v = map[ty][tx];
+  if (v === 2 || v === 3) return false;
+  if (tx === BOARD.x && ty === BOARD.y) return false;
+  if ((tx === P.tx && ty === P.ty) || (Math.round(P.px / T) === tx && Math.round(P.py / T) === ty)) return false;
+  return true;
+}
+function updateDog() {
+  if (scene !== "town") return;
+  const L = dogLevel();
+  if (DOG.bark > 0) DOG.bark--;
+  if (DOG.moving) {
+    const tx = DOG.tx * T, ty = DOG.ty * T, sp = L.speed || 1;
+    DOG.px += Math.sign(tx - DOG.px) * Math.min(sp, Math.abs(tx - DOG.px));
+    DOG.py += Math.sign(ty - DOG.py) * Math.min(sp, Math.abs(ty - DOG.py));
+    DOG.anim++;
+    if (DOG.px === tx && DOG.py === ty) { DOG.moving = false; DOG.wait = L.pause + Math.floor(Math.random() * L.pause); }
+    return;
+  }
+  if (D.open && D.dog) return;
+  if (L.key !== "nap" && Math.random() < (L.key === "zoomies" ? 0.012 : L.key === "pacing" ? 0.004 : 0.0015)) DOG.bark = 40;
+  if (--DOG.wait > 0 || !L.speed) return;
+  const opts = Object.values(DIRS).filter(([dx, dy]) => dogCanStand(DOG.tx + dx, DOG.ty + dy));
+  if (!opts.length) { DOG.wait = 30; return; }
+  const [dx, dy] = opts[Math.floor(Math.random() * opts.length)];
+  if (dx) DOG.face = dx;
+  DOG.tx += dx; DOG.ty += dy; DOG.moving = true;
+}
+
+function dogPages() {
+  const name = "BYTE · TOWN DOG";
+  const L = dogLevel(), urgent = urgentUnique();
+  const pages = [];
+  DOG.bark = 70; DOG.face = P.tx < DOG.tx ? -1 : 1;
+  if (!urgent.length) {
+    pages.push({ name, text: "*yawn*  ...  (Byte rolls onto his back. Nothing in town is urgent. He'd like a belly rub.)" });
+  } else {
+    const woofs = Array(Math.min(urgent.length, 8)).fill("WOOF!").join(" ");
+    const flair = { alert: "(Byte sits up straight and stares at you.)", pacing: "(Byte paces in a tight circle, then looks at you.)", zoomies: "(Byte does three laps of the pond at full speed and skids to a stop at your feet.)" }[L.key];
+    pages.push({ name, text: `${woofs}\n\n${flair} He barked ${urgent.length} time${urgent.length > 1 ? "s" : ""}, once for every urgent thing in town.` });
+  }
+  /* meter page */
+  const houses = [["slack", "SLACK"], ["gmail", "GMAIL"], ["calendar", "CALENDAR"], ["board", "BOARD"]];
+  const per = houses.map(([k, lab]) => {
+    const all = BRIEF.items.filter(i => i.house === k);
+    const u = urgent.filter(i => i.house === k).length;
+    return { k, lab, u, n: all.length };
+  });
+  const maxU = Math.max(1, ...per.map(r => r.u), 5);
+  const rows = per.map(r => `<div class="mrow"><span>${r.lab}</span><span class="bar"><i class="${r.u ? "" : "calm"}" style="width:${r.u ? Math.max(8, (r.u / maxU) * 100) : (r.n ? 6 : 0)}%"></i></span><span>${r.u} / ${r.n}</span></div>`).join("");
+  const total = BRIEF.items.length;
+  pages.push({ name, tag: "COMBINED URGENCY", html:
+    `<div class="meter"><div class="lvl">MOOD: <b>${L.name}</b> &nbsp;·&nbsp; ${urgent.length} urgent of ${total} things</div>${rows}</div>` });
+  if (urgent.length) {
+    const order = { calendar: 0, gmail: 1, slack: 2, board: 3 };
+    const list = [...urgent].sort((a, b) => order[a.house] - order[b.house]).slice(0, 6);
+    pages.push({ name, tag: "WHAT BYTE IS BARKING AT", html:
+      `<ol class="dl">${list.map(i => `<li><b>${esc(i.house.toUpperCase())}</b> ${esc(titleOf(i))}</li>`).join("")}</ol>` });
+    const top = per.filter(r => r.u).sort((a, b) => b.u - a.u)[0];
+    pages.push({ name, text: `(Byte drops a stick at your feet and points his nose at the ${top.lab} house. That's where most of it is: ${top.u} urgent.)` });
+  }
+  pages.dog = true;
+  return pages;
+}
+
+function drawTown(t) {
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    const v = map[y][x];
+    if (v === 1) drawPath(x, y); else if (v === 3) drawWater(x, y, t); else drawGrass(x, y);
+  }
+  for (const f of FLOWERS) { R(f.x * T + f.ox, f.y * T + f.oy, 2, 2, f.c); R(f.x * T + f.ox, f.y * T + f.oy + 2, 1, 2, "#3f8f37"); }
+  /* draw by row so the player tucks behind things above */
+  const rows = [];
+  for (let y = 0; y < ROWS; y++) rows.push([]);
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (map[y][x] === 2) rows[y].push(() => drawTree(x, y));
+  for (const k of Object.keys(HOUSES)) rows[HOUSES[k].y + 3].push(() => drawHouse(k, t));
+  rows[BOARD.y].push(() => drawBoard(t));
+  const prow = Math.min(ROWS - 1, Math.ceil(P.py / T));
+  rows[Math.min(ROWS - 1, Math.ceil(DOG.py / T))].push(() => drawDog(t));
+  rows[prow].push(() => drawPerson(P.px, P.py, P.dir, P.frame, KAT));
+  rows.forEach(r => r.forEach(fn => fn()));
+}
+
+function drawInterior(k, t) {
+  const K = KEEPERS[k], h = HOUSES[k];
+  R(0, 0, 320, 240, "#0b0b12");
+  const { ox, oy, w } = IN;
+  for (let y = oy + 1; y < oy + 7; y++) for (let x = ox + 1; x < ox + w - 1; x++) {
+    const X = x * T, Y = y * T;
+    R(X, Y, T, T, K.floor);
+    R(X, Y + ((x % 2) ? 7 : 15), T, 1, K.floor2);
+    R(X + ((y % 2) ? 4 : 11), Y, 1, T, K.floor2);
+  }
+  /* rug */
+  R((ox + 3) * T + 4, (oy + 4) * T + 2, 4 * T - 8, 2 * T - 4, h.roof2);
+  R((ox + 3) * T + 6, (oy + 4) * T + 4, 4 * T - 12, 2 * T - 8, h.roof);
+  /* back wall */
+  R(ox * T, oy * T - 16, w * T, T + 16, K.back);
+  R(ox * T, (oy + 1) * T - 4, w * T, 4, "rgba(0,0,0,.3)");
+  for (let i = 0; i < w * 2; i++) R(ox * T + i * 8, oy * T - 16, 1, T + 12, "rgba(255,255,255,.06)");
+  /* side + bottom walls */
+  R(ox * T, oy * T - 16, T, 8 * T + 16, "#2a2a3a"); R((ox + w - 1) * T, oy * T - 16, T, 8 * T + 16, "#2a2a3a");
+  R(ox * T, (oy + 7) * T, w * T, T, "#2a2a3a");
+  R(MAT.x * T, MAT.y * T, T, T, K.floor);
+  R(MAT.x * T + 2, MAT.y * T + 3, 12, 8, "#8a3a2a"); R(MAT.x * T + 3, MAT.y * T + 4, 10, 6, "#b85a3a");
+  /* decor */
+  const bx = ox * T, by = oy * T - 14;
+  if (k === "slack") {
+    for (let i = 0; i < 3; i++) { R(bx + 22 + i * 18, by + 4, 14, 10, "#f8f4e6"); R(bx + 24 + i * 18, by + 6, 8, 1, "#888"); R(bx + 24 + i * 18, by + 9, 6, 1, "#888"); }
+    R(bx + 102, by + 2, 34, 22, C.ink); R(bx + 103, by + 3, 32, 20, "#f8f4e6");
+    ctx.font = '16px "Press Start 2P"'; ctx.fillStyle = "#6b3fa0"; ctx.textBaseline = "top"; ctx.fillText("#", bx + 111, by + 6);
+  } else if (k === "gmail") {
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 2; j++) {
+      const cx = bx + 20 + i * 14, cy = by + 2 + j * 12;
+      R(cx, cy, 13, 11, "#5a3518"); R(cx + 1, cy + 1, 11, 9, "#3a220f");
+      if ((i + j * 2) % 3 !== 1) { R(cx + 2, cy + 3, 9, 6, "#ffffff"); R(cx + 5, cy + 5, 3, 1, "#cf4436"); }
+    }
+    R(bx + 112, by + 4, 22, 22, "#cf4436"); R(bx + 116, by + 8, 14, 10, "#ffffff"); R(bx + 120, by + 12, 6, 2, "#cf4436");
+  } else {
+    R(bx + 20, by + 0, 46, 28, C.ink); R(bx + 21, by + 1, 44, 26, "#f8f4e6"); R(bx + 21, by + 1, 44, 6, "#3a6fd0");
+    for (let i = 0; i < 7; i++) for (let j = 0; j < 3; j++) R(bx + 23 + i * 6, by + 9 + j * 6, 4, 4, (i === 2 && j === 0) ? "#ff5a4f" : "#cfd8e6");
+    const cx = bx + 112, cy = by + 14;
+    R(cx - 11, cy - 11, 22, 22, C.ink); R(cx - 10, cy - 10, 20, 20, "#f8f4e6");
+    const a = t / 60;
+    for (let i = 0; i < 7; i++) R(cx + Math.round(Math.cos(a) * i) - 1, cy + Math.round(Math.sin(a) * i) - 1, 2, 2, C.ink);
+    for (let i = 0; i < 5; i++) R(cx + Math.round(Math.cos(a / 12) * i) - 1, cy + Math.round(Math.sin(a / 12) * i) - 1, 2, 2, "#cf4436");
+  }
+  /* plants */
+  for (const px of [ox + 1, ox + w - 2]) {
+    const X = px * T, Y = (oy + 1) * T;
+    R(X + 4, Y + 9, 8, 6, "#8a4a2a"); R(X + 3, Y + 2, 10, 8, "#3f9a40"); R(X + 5, Y, 6, 4, "#5cbf55");
+  }
+  /* keeper behind counter */
+  drawPerson((ox + 4) * T, (oy + 1) * T, "down", 0, K.pal);
+  for (let x = ox + 2; x <= ox + 7; x++) {
+    const X = x * T, Y = (oy + 2) * T;
+    R(X, Y + 2, T, 12, "#7a4b2a"); R(X, Y, T, 4, "#a8743f"); R(X, Y + 13, T, 2, "#4a2c14");
+    if (x === ox + 2) R(X, Y, 1, 15, C.ink); if (x === ox + 7) R(X + 15, Y, 1, 15, C.ink);
+  }
+  const c = counts(k);
+  if (c.total) { ctx.font = '8px "Press Start 2P"'; R((ox + 6) * T + 2, (oy + 2) * T + 4, 22, 9, "#4a2c14"); ctx.fillStyle = "#f8f4e6"; ctx.fillText(String(c.total).padStart(2, " "), (ox + 6) * T + 5, (oy + 2) * T + 5); }
+  drawPerson(P.px, P.py, P.dir, P.frame, KAT);
+}
+
+/* ---------------------------------------------------------------- player + scenes */
+const P = { tx: 10, ty: 12, px: 160, py: 192, dir: "up", moving: false, frame: 0, anim: 0, from: null };
+const DOG = { tx: 8, ty: 12, px: 128, py: 192, face: 1, moving: false, wait: 60, anim: 0, bark: 0, sit: 0 };
+
+/* ------------- urgency, as the dog sees it */
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const titleOf = it => { const t = it.text.split(/\s[—–]\s|\s-\s|:\s/)[0]; return t.length > 52 ? t.slice(0, 50) + "…" : t; };
+function urgentUnique() {
+  const seen = [], out = [];
+  for (const it of BRIEF.items.filter(i => i.urgent)) {
+    const key = titleOf(it).toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+    if (key.length >= 8 && seen.some(k => k.startsWith(key) || key.startsWith(k))) continue;
+    seen.push(key); out.push(it);
+  }
+  return out;
+}
+function dogLevel() {
+  const n = urgentUnique().length;
+  if (n === 0) return { n, key: "nap",     name: "NAPPING",  speed: 0,   pause: 400 };
+  if (n <= 2)  return { n, key: "alert",   name: "ALERT",    speed: 1,   pause: 160 };
+  if (n <= 4)  return { n, key: "pacing",  name: "PACING",   speed: 1,   pause: 50 };
+  return              { n, key: "zoomies", name: "ZOOMIES",  speed: 2,   pause: 8 };
+}
+let scene = "town";
+let banner = { text: "BRIEF TOWN", t: 150 };
+let fade = 0, fadeDir = 0, fadeThen = null;
+
+function blocked(tx, ty) {
+  if (scene === "town") {
+    if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return true;
+    const v = map[ty][tx];
+    if (v === 2 || v === 3) return true;
+    if (tx === BOARD.x && ty === BOARD.y) return true;
+    if (tx === DOG.tx && ty === DOG.ty) return true;
+    const hk = houseAt(tx, ty);
+    if (hk) { const d = doorOf(hk); return !(d.x === tx && d.y === ty); }
+    return false;
+  }
+  if (tx === MAT.x && ty === MAT.y) return false;
+  return !(tx >= IN.ox + 1 && tx <= IN.ox + 8 && ty >= IN.oy + 3 && ty <= IN.oy + 6);
+}
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+function place(tx, ty, dir) { P.tx = tx; P.ty = ty; P.px = tx * T; P.py = ty * T; P.dir = dir; P.moving = false; P.frame = 0; }
+
+function transition(fn) { if (fadeDir) return; fadeDir = 1; fadeThen = fn; }
+
+function arrived() {
+  if (scene === "town") {
+    for (const k of Object.keys(HOUSES)) {
+      const d = doorOf(k);
+      if (P.tx === d.x && P.ty === d.y) {
+        transition(() => {
+          scene = k; place(IN.ox + 4, IN.oy + 6, "up");
+          banner = { text: HOUSES[k].label + " HOUSE", t: 110 };
+          setTimeout(() => openDialog(housePages(k)), 380);
+        });
+        return;
+      }
+    }
+  } else if (P.tx === MAT.x && P.ty === MAT.y) {
+    const k = scene;
+    transition(() => { scene = "town"; const d = doorOf(k); place(d.x, d.y + 1, "down"); banner = { text: "BRIEF TOWN", t: 90 }; });
+  }
+}
+
+function tryMove(dir) {
+  P.dir = dir;
+  const [dx, dy] = DIRS[dir];
+  const nx = P.tx + dx, ny = P.ty + dy;
+  if (blocked(nx, ny)) return;
+  P.tx = nx; P.ty = ny; P.moving = true;
+}
+
+function interact() {
+  const [dx, dy] = DIRS[P.dir];
+  const fx = P.tx + dx, fy = P.ty + dy;
+  if (scene === "town") {
+    if (fx === DOG.tx && fy === DOG.ty) openDialog(dogPages());
+    else if (fx === BOARD.x && fy === BOARD.y) openDialog(boardPages());
+    else { const hk = houseAt(fx, fy); if (hk) openDialog([{ name: "SIGN", text: `${HOUSES[hk].label} HOUSE. The door's at the front. Walk in to collect what's waiting.` }]); }
+  } else if (P.dir === "up" && fy === IN.oy + 2 && fx >= IN.ox + 2 && fx <= IN.ox + 7) {
+    openDialog(housePages(scene));
+  }
+}
+
+/* ---------------------------------------------------------------- dialog */
+function paginate(text, max) {
+  const sentences = text.match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) || [text];
+  const pages = []; let cur = "";
+  const flush = () => { if (cur.trim()) pages.push(cur.trim()); cur = ""; };
+  for (const s of sentences) {
+    if (s.length > max) {
+      flush();
+      for (const w of s.split(" ")) { if ((cur + " " + w).length > max && cur) flush(); cur += " " + w; }
+      continue;
+    }
+    if ((cur + s).length > max) flush();
+    cur += s;
+  }
+  flush();
+  return pages;
+}
+function linkLabel(u) {
+  if (/slack\.com/.test(u)) return "OPEN IN SLACK ↗";
+  if (/mail\.google/.test(u)) return "OPEN IN GMAIL ↗";
+  if (/calendar\.google/.test(u)) return "OPEN IN CALENDAR ↗";
+  return "OPEN ↗";
+}
+function itemPages(list, name) {
+  const pages = [];
+  list.forEach((it, i) => {
+    const chunks = paginate(it.text, 300);
+    chunks.forEach((c, j) => pages.push({
+      name, text: c, urgent: it.urgent,
+      tag: (it.urgent ? "! " : "") + it.section.toUpperCase() + `  ·  ${i + 1}/${list.length}` + (chunks.length > 1 ? `  (${j + 1}/${chunks.length})` : ""),
+      url: j === chunks.length - 1 ? it.urls[0] : null,
+    }));
+  });
+  return pages;
+}
+function housePages(k) {
+  const K = KEEPERS[k];
+  const list = BRIEF.items.filter(i => i.house === k).sort((a, b) => b.urgent - a.urgent);
+  if (!list.length) return [{ name: K.name, text: K.empty }];
+  const u = list.filter(i => i.urgent).length;
+  return [{ name: K.name, text: K.greet(list.length, u) }, ...itemPages(list, K.name), { name: K.name, text: K.bye }];
+}
+function boardPages() {
+  const name = "TOWN NOTICE BOARD";
+  const list = BRIEF.items.filter(i => i.house === "board");
+  const pages = BRIEF.headlines.map(h => ({ name, tag: "POSTED", text: h }));
+  pages.push(...itemPages(list, name));
+  if (!pages.length) pages.push({ name, text: "The board is bare. Load a brief from the Mailbag to pin today's notes here." });
+  return pages;
+}
+
+const D = { el: document.getElementById("dialog"), name: document.getElementById("dName"), tag: document.getElementById("dTag"),
+            text: document.getElementById("dText"), link: document.getElementById("dLink"), more: document.getElementById("dMore"),
+            pages: [], i: 0, shown: 0, open: false };
+function openDialog(pages) { D.dog = !!pages.dog; D.pages = pages; D.i = 0; D.open = true; D.el.classList.add("open"); showPage(); }
+function showPage() {
+  const p = D.pages[D.i];
+  D.name.textContent = p.name; D.tag.textContent = p.tag || ""; D.tag.className = "tag" + (p.urgent ? " urgent" : "");
+  D.tag.style.display = p.tag ? "block" : "none";
+  D.shown = 0; D.text.textContent = ""; D.link.style.display = "none"; D.more.style.visibility = "hidden";
+  if (p.html) finishPage();
+}
+function finishPage() {
+  const p = D.pages[D.i];
+  if (p.html) { D.shown = 0; D.text.innerHTML = p.html; }
+  else { D.shown = p.text.length; D.text.textContent = p.text; }
+  if (p.url) { D.link.href = p.url; D.link.textContent = linkLabel(p.url); D.link.style.display = "inline-block"; }
+  D.more.style.visibility = "visible";
+  D.more.innerHTML = D.i < D.pages.length - 1 ? "&#9660;" : "&#9632;";
+}
+function advance() {
+  const p = D.pages[D.i];
+  if (!p.html && D.shown < p.text.length) { finishPage(); return; }
+  if (D.i < D.pages.length - 1) { D.i++; showPage(); } else closeDialog();
+}
+function closeDialog() { D.dog = false; D.open = false; D.el.classList.remove("open"); }
+
+/* ---------------------------------------------------------------- input */
+const held = [];
+const KEYMAP = { ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right" };
+const modalOpen = () => document.getElementById("modal").classList.contains("open");
+function press(d) { if (!held.includes(d)) held.push(d); }
+function release(d) { const i = held.indexOf(d); if (i >= 0) held.splice(i, 1); }
+function aButton() { if (fadeDir) return; if (D.open) advance(); else interact(); }
+function bButton() { if (D.open) closeDialog(); }
+addEventListener("keydown", e => {
+  if (modalOpen()) { if (e.key === "Escape") closeModal(); return; }
+  const d = KEYMAP[e.code];
+  if (d) { e.preventDefault(); press(d); return; }
+  if (["Space", "Enter", "KeyZ"].includes(e.code)) { e.preventDefault(); if (!e.repeat) aButton(); }
+  if (["Escape", "KeyX", "Backspace"].includes(e.code)) { e.preventDefault(); bButton(); }
+});
+addEventListener("keyup", e => { const d = KEYMAP[e.code]; if (d) release(d); });
+addEventListener("blur", () => held.length = 0);
+document.querySelectorAll(".dpad button").forEach(b => {
+  const d = b.dataset.dir;
+  b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); press(d); b.classList.add("on"); });
+  const up = () => { release(d); b.classList.remove("on"); };
+  b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up); b.addEventListener("lostpointercapture", up);
+});
+document.getElementById("btnA").addEventListener("pointerdown", e => { e.preventDefault(); aButton(); });
+document.getElementById("btnB").addEventListener("pointerdown", e => { e.preventDefault(); bButton(); });
+document.getElementById("stage").addEventListener("pointerdown", e => { if (D.open && !e.target.closest("a")) advance(); });
+
+/* ---------------------------------------------------------------- mailbag */
+const STORE = "brieftown.text.v1";
+function closeModal() { document.getElementById("modal").classList.remove("open"); }
+document.getElementById("openBag").onclick = () => {
+  let saved = ""; try { saved = localStorage.getItem(STORE) || ""; } catch {}
+  document.getElementById("bagText").value = usingSample ? "" : saved;
+  document.getElementById("modal").classList.add("open");
+  held.length = 0;
+  setTimeout(() => document.getElementById("bagText").focus(), 30);
+};
+document.getElementById("bagCancel").onclick = closeModal;
+document.getElementById("bagSample").onclick = () => { try { localStorage.removeItem(STORE); } catch {} loadText(SAMPLE, true); closeModal(); deliveredBanner(); };
+document.getElementById("bagLoad").onclick = () => {
+  const v = document.getElementById("bagText").value.trim();
+  if (!v) return;
+  try { localStorage.setItem(STORE, v); } catch {}
+  loadText(v, false); closeModal(); deliveredBanner();
+};
+function deliveredBanner() { closeDialog(); banner = { text: "NEW DELIVERY!", t: 120 }; }
+
+/* ---------------------------------------------------------------- loop */
+let tick = 0;
+function update() {
+  tick++;
+  if (fadeDir) {
+    fade += fadeDir * 0.08;
+    if (fade >= 1) { fade = 1; fadeDir = -1; if (fadeThen) { fadeThen(); fadeThen = null; } }
+    if (fade <= 0) { fade = 0; fadeDir = 0; }
+  }
+  if (P.moving) {
+    const tx = P.tx * T, ty = P.ty * T, sp = 2;
+    P.px += Math.sign(tx - P.px) * Math.min(sp, Math.abs(tx - P.px));
+    P.py += Math.sign(ty - P.py) * Math.min(sp, Math.abs(ty - P.py));
+    P.anim++;
+    P.frame = Math.floor(P.anim / 6) % 2 ? (Math.floor(P.anim / 12) % 2 ? 1 : 2) : 0;
+    if (P.px === tx && P.py === ty) { P.moving = false; arrived(); }
+  }
+  updateDog();
+  if (!P.moving && !D.open && !fadeDir && !modalOpen() && held.length) tryMove(held[held.length - 1]);
+  if (!P.moving && !held.length) P.frame = 0;
+  if (D.open) {
+    const p = D.pages[D.i];
+    if (!p.html && D.shown < p.text.length) { D.shown = Math.min(p.text.length, D.shown + 2); D.text.textContent = p.text.slice(0, D.shown); if (D.shown >= p.text.length) finishPage(); }
+  }
+  if (banner.t > 0) banner.t--;
+}
+function render() {
+  if (scene === "town") drawTown(tick); else drawInterior(scene, tick);
+  if (banner.t > 0) {
+    ctx.font = '8px "Press Start 2P"';
+    const w = ctx.measureText(banner.text).width + 20;
+    const y = banner.t > 100 ? 8 - (banner.t - 100) : banner.t < 15 ? 8 - (15 - banner.t) * 2 : 8;
+    R(160 - w / 2 - 2, y - 2 + 20, w + 4, 20, C.ink);
+    R(160 - w / 2, y + 20, w, 16, "#f8f4e6");
+    ctx.fillStyle = C.ink; ctx.textBaseline = "top"; ctx.fillText(banner.text, 160 - w / 2 + 10, y + 24);
+  }
+  if (fade > 0) R(0, 0, 320, 240, `rgba(0,0,0,${Math.min(1, fade)})`);
+}
+let last = performance.now(), acc = 0;
+function frame(now) {
+  acc += Math.min(100, now - last); last = now;
+  while (acc >= 1000 / 60) { update(); acc -= 1000 / 60; }
+  render();
+  requestAnimationFrame(frame);
+}
+
+/* ---------------------------------------------------------------- boot */
+let saved = null; try { saved = localStorage.getItem(STORE); } catch {}
+loadText(saved || SAMPLE, !saved);
+
+/* On localhost, read brief.local.txt next to this page (written by Claude Code's /brief command)
+   and pick up changes every minute. Opened from file:// or anywhere without the file, this is a no-op. */
+const LOCAL_FILE = "brief.local.txt";
+let lastLocal = null;
+async function pollLocal() {
+  if (!/^https?:$/.test(location.protocol)) return;
+  try {
+    const r = await fetch(LOCAL_FILE + "?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) return;
+    const text = (await r.text()).trim();
+    if (!text || text === lastLocal) return;
+    const first = lastLocal === null;
+    lastLocal = text;
+    loadText(text, LOCAL_FILE);
+    if (!first) deliveredBanner();
+  } catch {}
+}
+pollLocal(); setInterval(pollLocal, 60000);
+const go = () => requestAnimationFrame(t => { last = t; frame(t); });
+(document.fonts && document.fonts.load) ? document.fonts.load('8px "Press Start 2P"').then(go, go) : go();
+
+})();
+</script>
+</body>
+</html>

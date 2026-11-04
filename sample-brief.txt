@@ -1,0 +1,32 @@
+Monday, Mar 9 · 3h 30m booked — the afternoon runs back to back
+
+Shape of the day
+Quiet morning for focus work, then the Lighthouse demo at 1, the vendor call at 2 and your 1:1 with Priya at 3. Nothing after 4.
+
+Needs you today
+1. The demo dry run clashes with the vendor call — Lighthouse demo prep (1:30–2:15, your invite) overlaps the Northwind vendor call (2:00–2:30). You're the organizer, so moving it is on you. [event]
+2. Sam needs your sign-off on the API rate limits — he proposed 100 req/min per key for launch and is blocked on your yes before he can merge. [email]
+3. Design review feedback is due — Alex asked in #lighthouse-design for your comments on the onboarding flow by end of day. [slack]
+
+Prep for tomorrow
+• Sprint planning, 10:00 — your agenda, and the board still has six unsized tickets. [event]
+• Quarterly roadmap sync, 2:00 — you're presenting the Lighthouse timeline; the slides on the invite are last quarter's.
+
+Worth a glance
+• The staging outage is resolved — Jordan rolled back the config change and posted a write-up. [thread]
+• Finance approved the new monitoring budget — the email came in overnight; nothing for you to do. [email]
+• Riley's question about the feature flag naming was answered by Morgan in the thread. [slack]
+
+*EOD sweep* · Monday
+
+*Still waiting on you* (3)
+1. Sam's rate-limit sign-off — still the same one from this morning; he's still blocked on the merge. [email]
+2. Onboarding flow feedback — Alex pinged again at 3:40pm; the design review is tomorrow morning. [slack]
+3. Changelog for the 2.4 release — you said in standup you'd draft it today and it isn't in the doc yet. [thread]
+
+*You're waiting on them* (2)
+• Vendor security questionnaire — you sent it to Northwind on Thursday and haven't heard back. [email]
+• Load-test results — Casey said they'd share them by Monday. [slack]
+
+*Tomorrow starts with*
+Sprint planning at 10:00 — you own the agenda and six tickets still need sizes, so spend ten minutes on the board before you go in.
