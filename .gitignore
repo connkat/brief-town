@@ -3,6 +3,9 @@ brief.local.txt
 *.local.txt
 *.local.*
 
+# Your setup (which of your tools Claude may use)
+brief.config.json
+
 # Secrets
 .env
 .env.*

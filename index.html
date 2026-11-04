@@ -21,6 +21,9 @@
        box-shadow:0 0 0 2px var(--paper),4px 4px 0 2px #000;padding:9px 12px;cursor:pointer}
   .btn:active{transform:translate(2px,2px);box-shadow:0 0 0 2px var(--paper),2px 2px 0 2px #000}
   .btn.ghost{background:#2a2a40;color:var(--paper);border-color:var(--paper);box-shadow:none}
+  .btn:disabled{opacity:.55;cursor:wait}
+  .chip.busy{background:#7a3b00;animation:bob .8s steps(2) infinite}
+  .chip.err{background:#7a1f1f}
   .stage{position:relative;width:100%;max-width:960px;aspect-ratio:4/3;background:#000;
          border:4px solid #000;box-shadow:0 0 0 4px #3b3b5c, 0 10px 30px rgba(0,0,0,.6);border-radius:6px;overflow:hidden}
   canvas{width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges}
@@ -75,7 +78,10 @@
       <h1>BRIEF TOWN</h1>
       <div class="sub" id="subline">Walk into a house to hear what it's holding for you.</div>
     </div>
-    <button class="btn" id="openBag">MAILBAG: LOAD BRIEF</button>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn" id="fetchBtn" style="display:none">FETCH NEW BRIEF</button>
+      <button class="btn ghost" id="openBag">PASTE A BRIEF</button>
+    </div>
   </div>
 
   <div class="stage" id="stage">
@@ -110,7 +116,7 @@
   <div class="modal" id="modal">
     <div class="panel">
       <h2>THE MAILBAG</h2>
-      <p>Paste today's morning brief and/or EOD sweep, copied straight from your Slack self-DM. You can paste both at once.
+      <p>No connections needed for this one. Paste a morning brief and/or end-of-day sweep (you can paste both at once).
          Each item goes to the right house: Slack links and [slack] go to the Slack house, Gmail links and [email] to the Gmail house, calendar links and [event] to the Calendar house.
          Anything else is pinned to the town notice board. The text stays in this browser and is never sent anywhere.</p>
       <textarea id="bagText" spellcheck="false"></textarea>
@@ -233,6 +239,8 @@ function parseBrief(raw) {
 
 /* ---------------------------------------------------------------- state */
 let BRIEF = { items: [], headlines: [] };
+const SERVER = { on: false, running: false, configured: false, lastError: null, lastOk: null };
+const dogAway = () => SERVER.on && SERVER.running;
 let usingSample = true;
 function loadText(text, isSample) {
   BRIEF = parseBrief(text);
@@ -256,6 +264,14 @@ function renderHud() {
     const el = document.createElement("div");
     el.className = "chip";
     el.innerHTML = `${label} ${c.total}` + (c.urgent ? ` <b>!${c.urgent}</b>` : "");
+    hud.appendChild(el);
+  }
+  if (SERVER.on) {
+    const el = document.createElement("div");
+    if (SERVER.running) { el.className = "chip busy"; el.textContent = "BYTE IS FETCHING…"; }
+    else if (!SERVER.configured) { el.className = "chip err"; el.textContent = "NOT CONNECTED"; }
+    else if (SERVER.lastError) { el.className = "chip err"; el.textContent = "FETCH FAILED · SEE BOARD"; }
+    else { el.className = "chip"; el.textContent = SERVER.lastOk ? "FETCHED " + new Date(SERVER.lastOk).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "CONNECTED"; }
     hud.appendChild(el);
   }
 }
@@ -602,7 +618,7 @@ function drawTown(t) {
   for (const k of Object.keys(HOUSES)) rows[HOUSES[k].y + 3].push(() => drawHouse(k, t));
   rows[BOARD.y].push(() => drawBoard(t));
   const prow = Math.min(ROWS - 1, Math.ceil(P.py / T));
-  rows[Math.min(ROWS - 1, Math.ceil(DOG.py / T))].push(() => drawDog(t));
+  if (!dogAway()) rows[Math.min(ROWS - 1, Math.ceil(DOG.py / T))].push(() => drawDog(t));
   rows[prow].push(() => drawPerson(P.px, P.py, P.dir, P.frame, KAT));
   rows.forEach(r => r.forEach(fn => fn()));
 }
@@ -701,7 +717,7 @@ function blocked(tx, ty) {
     const v = map[ty][tx];
     if (v === 2 || v === 3) return true;
     if (tx === BOARD.x && ty === BOARD.y) return true;
-    if (tx === DOG.tx && ty === DOG.ty) return true;
+    if (!dogAway() && tx === DOG.tx && ty === DOG.ty) return true;
     const hk = houseAt(tx, ty);
     if (hk) { const d = doorOf(hk); return !(d.x === tx && d.y === ty); }
     return false;
@@ -745,7 +761,7 @@ function interact() {
   const [dx, dy] = DIRS[P.dir];
   const fx = P.tx + dx, fy = P.ty + dy;
   if (scene === "town") {
-    if (fx === DOG.tx && fy === DOG.ty) openDialog(dogPages());
+    if (!dogAway() && fx === DOG.tx && fy === DOG.ty) openDialog(dogPages());
     else if (fx === BOARD.x && fy === BOARD.y) openDialog(boardPages());
     else { const hk = houseAt(fx, fy); if (hk) openDialog([{ name: "SIGN", text: `${HOUSES[hk].label} HOUSE. The door's at the front. Walk in to collect what's waiting.` }]); }
   } else if (P.dir === "up" && fy === IN.oy + 2 && fx >= IN.ox + 2 && fx <= IN.ox + 7) {
@@ -797,6 +813,9 @@ function housePages(k) {
 }
 function boardPages() {
   const name = "TOWN NOTICE BOARD";
+  if (SERVER.on && SERVER.running) return [{ name, tag: "POSTED", text: "GONE FETCHING. Byte has run off to collect a fresh brief. The houses will update when he's back." }];
+  if (SERVER.on && !SERVER.configured) return [{ name, tag: "POSTED", text: "This town isn't connected to anything yet, so you're looking at sample news. To connect Slack, Gmail and Calendar, open Claude Code in this folder and say: set up Brief Town." }];
+  if (SERVER.on && SERVER.lastError) return [{ name, tag: "POSTED", text: "Byte couldn't fetch the last brief: " + SERVER.lastError }];
   const list = BRIEF.items.filter(i => i.house === "board");
   const pages = BRIEF.headlines.map(h => ({ name, tag: "POSTED", text: h }));
   pages.push(...itemPages(list, name));
@@ -945,6 +964,40 @@ async function pollLocal() {
   } catch {}
 }
 pollLocal(); setInterval(pollLocal, 60000);
+
+/* When served by server.mjs, show its status and let the player ask for a fresh brief. */
+const API = { headers: { "X-Brief-Town": "1" }, cache: "no-store" };
+const fetchBtn = document.getElementById("fetchBtn");
+let statusTimer = null;
+async function pollStatus() {
+  clearTimeout(statusTimer);
+  if (!/^https?:$/.test(location.protocol)) return;
+  try {
+    const r = await fetch("api/status", API);
+    if (!r.ok) return;
+    const st = await r.json();
+    const wasRunning = SERVER.running;
+    Object.assign(SERVER, { on: true, running: st.running, configured: st.configured, lastError: st.lastError, lastOk: st.lastOk });
+    fetchBtn.style.display = "";
+    fetchBtn.disabled = st.running;
+    fetchBtn.textContent = st.running ? "FETCHING…" : "FETCH NEW BRIEF";
+    if (wasRunning && !st.running) { if (st.lastError) banner = { text: "FETCH FAILED", t: 120 }; await pollLocal(); }
+    if (!st.running && !st.configured) document.getElementById("sourceNote").textContent = "Showing: sample briefs · not connected yet (see the notice board)";
+    renderHud();
+  } catch { return; }
+  statusTimer = setTimeout(pollStatus, SERVER.running ? 4000 : 30000);
+}
+fetchBtn.onclick = async () => {
+  fetchBtn.disabled = true;
+  try {
+    const r = await fetch("api/refresh", { ...API, method: "POST" });
+    const res = await r.json();
+    if (!res.started) { SERVER.lastError = res.reason; banner = { text: "CAN'T FETCH", t: 120 }; openDialog(boardPages()); }
+    else { closeDialog(); banner = { text: "BYTE RAN OFF TO FETCH!", t: 140 }; }
+  } catch {}
+  pollStatus();
+};
+pollStatus();
 const go = () => requestAnimationFrame(t => { last = t; frame(t); });
 (document.fonts && document.fonts.load) ? document.fonts.load('8px "Press Start 2P"').then(go, go) : go();
 

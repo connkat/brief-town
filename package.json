@@ -1,0 +1,14 @@
+{
+  "name": "brief-town",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A 16-bit town that shows your Slack, Gmail and Calendar admin brief. Briefs are generated locally by Claude Code.",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.mjs",
+    "brief": "node server.mjs --once",
+    "brief:morning": "node server.mjs --once morning",
+    "brief:eod": "node server.mjs --once eod"
+  }
+}
