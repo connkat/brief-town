@@ -4,9 +4,10 @@ A 16-bit town that turns your Slack, Gmail and Google Calendar into somewhere yo
 
 - **Slack, Gmail and Calendar houses.** Walk through a door and the keeper reads out what needs you there, urgent things first.
 - **Notice board.** Holds the day's headline and "Shape of the day".
-- **Byte the dog.** His mood shows how urgent the whole day is: napping, alert, pacing or zoomies. Talk to him for a combined urgency meter. He disappears while he's out fetching a new brief.
+- **Wren the bird.** Talk to her to fetch a fresh brief. She flies off, and when she lands back on her perch the houses have been updated.
+- **Byte the dog.** His mood shows how urgent the whole day is: a napping dog, then a tail wag that gets faster (alert, wiggly, frantic). Talk to him for a combined urgency meter.
 
-Briefs are written by Claude Code on your own computer, from your own accounts. A morning brief arrives at 7:50am and an end-of-day sweep at 4:25pm on weekdays, or press **Fetch new brief** any time.
+Briefs are written by Claude Code on your own computer, from your own accounts. A morning brief arrives at 7:50am and an end-of-day sweep at 4:25pm on weekdays, or ask Wren (or press **Fetch new brief**) any time.
 
 **Controls:** arrow keys or WASD to walk · Space or Z to talk · X or Esc to close · on-screen pad on phones
 
@@ -33,7 +34,7 @@ To run it again later: `npm start`.
 |---|---|
 | `npm start` | Serve the game on localhost and fetch briefs on schedule |
 | `npm run brief` | Fetch one brief now and print it (morning before noon, sweep after) |
-| `npm run brief:morning` / `brief:eod` | Force a particular kind |
+ `npm run brief:morning` / `brief:eod` | Force a particular kind |
 
 The schedule lives in `brief.config.json` and uses your computer's local time. The server has to be running for scheduled briefs. Claude can set it up to start at login if you ask.
 

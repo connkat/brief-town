@@ -21,7 +21,7 @@ When the user asks to set this up, do these steps in order. Explain each one bri
 4. **Test it.** Run `npm run brief`. It runs one brief in the foreground and prints it. If it fails, read the error; it's usually a tool that isn't allowed or a service that isn't signed in. Fix `allowedTools` and re-run. Show the user the brief.
 
 5. **Start it.** Run `npm start` in the background and give the user `http://localhost:8000`. Tell them:
-   - Briefs refresh on schedule while the server is running, and **Fetch new brief** in the game gets one on demand.
+   - Briefs refresh on schedule while the server is running, and talking to Wren the bird (or pressing **Fetch new brief**) gets one on demand.
    - The server has to stay running for scheduled briefs. Offer to set it up to start at login (launchd on macOS, a systemd user service on Linux, Task Scheduler on Windows). Only do that if they say yes.
 
 ## Hard rules
@@ -33,9 +33,9 @@ When the user asks to set this up, do these steps in order. Explain each one bri
 
 ## Files
 
-- `index.html`: the game. Parser: `parseBrief`, `routeItem`. Server hookup: `pollStatus`, `pollLocal`. Houses: `HOUSES`, `KEEPERS`. Dog: `dogLevel`, `drawDog`, `dogPages`.
+- `index.html`: the game. Parser: `parseBrief`, `routeItem`. Server hookup: `pollStatus`, `pollLocal`. Houses: `HOUSES`, `KEEPERS`. Dog: `dogLevel`, `drawDog`, `dogPages`. Bird: `BIRD`, `updateBird`, `birdPages`, `startFetch`.
 - `server.mjs`: static server, scheduler, `claude -p` runner. The brief must come back between `=====BRIEF START=====` and `=====BRIEF END=====`.
 - `prompts/brief.md`: what the brief run is asked to do. `{{NOW}}` and `{{MODE}}` are filled in by the server.
 - `sample-brief.txt` and the `SAMPLE` constant in `index.html`: fictional data. Keep them in sync and keep them fictional.
 
-After changing the game, test it in a browser: walk into each house, talk to the dog, press Fetch.
+After changing the game, test it in a browser: walk into each house, talk to the dog, send Wren to fetch.

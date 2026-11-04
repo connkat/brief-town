@@ -240,7 +240,7 @@ function parseBrief(raw) {
 /* ---------------------------------------------------------------- state */
 let BRIEF = { items: [], headlines: [] };
 const SERVER = { on: false, running: false, configured: false, lastError: null, lastOk: null };
-const dogAway = () => SERVER.on && SERVER.running;
+const dogAway = () => false;
 let usingSample = true;
 function loadText(text, isSample) {
   BRIEF = parseBrief(text);
@@ -268,7 +268,7 @@ function renderHud() {
   }
   if (SERVER.on) {
     const el = document.createElement("div");
-    if (SERVER.running) { el.className = "chip busy"; el.textContent = "BYTE IS FETCHING…"; }
+    if (SERVER.running) { el.className = "chip busy"; el.textContent = "WREN IS FETCHING…"; }
     else if (!SERVER.configured) { el.className = "chip err"; el.textContent = "NOT CONNECTED"; }
     else if (SERVER.lastError) { el.className = "chip err"; el.textContent = "FETCH FAILED · SEE BOARD"; }
     else { el.className = "chip"; el.textContent = SERVER.lastOk ? "FETCHED " + new Date(SERVER.lastOk).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "CONNECTED"; }
@@ -495,7 +495,8 @@ function drawDog(t) {
   const L = dogLevel();
   const fur = "#c98a4b", light = "#f3d9b1", dark = "#7a4a22";
   const X = Math.round(DOG.px), Y = Math.round(DOG.py);
-  const hop = (L.key === "zoomies" && DOG.moving) ? -(Math.floor(DOG.anim / 4) % 2) : 0;
+  /* frantic: the whole back end wiggles in place */
+  const hop = L.key === "frantic" ? -(Math.floor(t / 4) % 2) : 0;
   ctx.save();
   if (DOG.face < 0) { ctx.translate(X * 2 + 16, 0); ctx.scale(-1, 1); }
   const D2 = (x, y, w, h, c) => R(X + x, Y + y + hop, w, h, c);
@@ -506,7 +507,7 @@ function drawDog(t) {
     D2(11, 9, 2, 1, C.ink); D2(10, 6, 2, 2, dark);
     D2(0, 11, 3, 2, fur);
   } else {
-    const f = Math.floor(DOG.anim / 5) % 2;
+    const f = Math.floor(DOG.anim / 8) % 2;
     const sitting = !DOG.moving && L.key === "alert";
     if (sitting) { D2(4, 9, 7, 5, fur); D2(4, 13, 3, 2, dark); D2(9, 13, 2, 2, fur); }
     else {
@@ -518,8 +519,16 @@ function drawDog(t) {
     D2(12, 5, 1, 1, C.ink); D2(10, 1, 2, 4, dark);
     D2(10, 9, 4, 1, "#c0392b"); D2(12, 10, 1, 1, "#f2c14e");
     if (DOG.bark > 0) D2(14, 8, 2, 1, "#a83a3a");
-    const wag = Math.floor(t / (L.key === "zoomies" ? 3 : L.key === "pacing" ? 5 : 10)) % 2;
-    if (sitting) D2(2, 11 + wag, 3, 2, fur); else D2(1, wag ? 5 : 7, 2, 3, fur);
+    /* tail: three positions swept back and forth; speed is the urgency */
+    const step = Math.floor(t / L.wag) % 4, pos = [0, 1, 2, 1][step];
+    if (sitting) {
+      if (pos === 0) D2(1, 10, 3, 2, fur); else if (pos === 1) D2(1, 12, 3, 2, fur); else D2(2, 13, 3, 2, fur);
+    } else {
+      if (pos === 0) { D2(1, 4, 2, 4, fur); D2(1, 3, 1, 1, light); }
+      else if (pos === 1) { D2(0, 6, 3, 3, fur); D2(0, 6, 1, 1, light); }
+      else { D2(0, 8, 3, 2, fur); D2(0, 9, 1, 1, light); }
+      if (L.key === "frantic") { R(X + (DOG.face > 0 ? -3 : 17), Y + 4 + hop, 1, 3, "rgba(255,255,255,.7)"); R(X + (DOG.face > 0 ? -5 : 19), Y + 6 + hop, 1, 2, "rgba(255,255,255,.5)"); }
+    }
   }
   ctx.restore();
   /* mood marks above the dog (never mirrored) */
@@ -528,7 +537,7 @@ function drawDog(t) {
     const z = Math.floor(t / 40) % 3;
     for (let i = 0; i <= z; i++) { ctx.fillStyle = "#f8f4e6"; ctx.fillText("z", X + 12 + i * 4, Y - 2 - i * 5); }
   } else if (L.key !== "alert" || DOG.bark > 0) {
-    const s = L.key === "zoomies" ? "!!" : "!";
+    const s = L.key === "frantic" ? "!!" : "!";
     const bob = Math.floor(t / 10) % 2, w = s.length * 8 + 4;
     R(X + 8 - w / 2 - 1, Y - 13 + bob, w + 2, 12, C.ink); R(X + 8 - w / 2, Y - 12 + bob, w, 10, "#ff5a4f");
     ctx.fillStyle = "#fff"; ctx.fillText(s, X + 8 - w / 2 + 2, Y - 11 + bob);
@@ -544,6 +553,7 @@ function dogCanStand(tx, ty) {
   const v = map[ty][tx];
   if (v === 2 || v === 3) return false;
   if (tx === BOARD.x && ty === BOARD.y) return false;
+  if (tx === PERCH.x && ty === PERCH.y) return false;
   if ((tx === P.tx && ty === P.ty) || (Math.round(P.px / T) === tx && Math.round(P.py / T) === ty)) return false;
   return true;
 }
@@ -552,16 +562,16 @@ function updateDog() {
   const L = dogLevel();
   if (DOG.bark > 0) DOG.bark--;
   if (DOG.moving) {
-    const tx = DOG.tx * T, ty = DOG.ty * T, sp = L.speed || 1;
+    const tx = DOG.tx * T, ty = DOG.ty * T, sp = 0.5;
     DOG.px += Math.sign(tx - DOG.px) * Math.min(sp, Math.abs(tx - DOG.px));
     DOG.py += Math.sign(ty - DOG.py) * Math.min(sp, Math.abs(ty - DOG.py));
     DOG.anim++;
-    if (DOG.px === tx && DOG.py === ty) { DOG.moving = false; DOG.wait = L.pause + Math.floor(Math.random() * L.pause); }
+    if (DOG.px === tx && DOG.py === ty) { DOG.moving = false; DOG.wait = 480 + Math.floor(Math.random() * 600); }
     return;
   }
   if (D.open && D.dog) return;
-  if (L.key !== "nap" && Math.random() < (L.key === "zoomies" ? 0.012 : L.key === "pacing" ? 0.004 : 0.0015)) DOG.bark = 40;
-  if (--DOG.wait > 0 || !L.speed) return;
+  if (L.key !== "nap" && Math.random() < (L.key === "frantic" ? 0.006 : L.key === "wiggly" ? 0.002 : 0.0007)) DOG.bark = 40;
+  if (--DOG.wait > 0 || !L.roams) return;
   const opts = Object.values(DIRS).filter(([dx, dy]) => dogCanStand(DOG.tx + dx, DOG.ty + dy));
   if (!opts.length) { DOG.wait = 30; return; }
   const [dx, dy] = opts[Math.floor(Math.random() * opts.length)];
@@ -578,7 +588,7 @@ function dogPages() {
     pages.push({ name, text: "*yawn*  ...  (Byte rolls onto his back. Nothing in town is urgent. He'd like a belly rub.)" });
   } else {
     const woofs = Array(Math.min(urgent.length, 8)).fill("WOOF!").join(" ");
-    const flair = { alert: "(Byte sits up straight and stares at you.)", pacing: "(Byte paces in a tight circle, then looks at you.)", zoomies: "(Byte does three laps of the pond at full speed and skids to a stop at your feet.)" }[L.key];
+    const flair = { alert: "(Byte sits up and gives a slow, thoughtful wag.)", wiggly: "(Byte's tail is going fast enough to fan the flowers.)", frantic: "(Byte's tail is a blur and his whole back end is wiggling. He can't sit still.)" }[L.key];
     pages.push({ name, text: `${woofs}\n\n${flair} He barked ${urgent.length} time${urgent.length > 1 ? "s" : ""}, once for every urgent thing in town.` });
   }
   /* meter page */
@@ -605,6 +615,74 @@ function dogPages() {
   return pages;
 }
 
+/* ---------------------------------------------------------------- Wren the messenger bird */
+const PERCH = { x: 12, y: 8 };
+const BIRD = { mode: "perched", x: 0, y: 0, t: 0, from: null };
+const perchXY = () => ({ x: PERCH.x * T + 4, y: PERCH.y * T - 4 });
+
+function drawPerch() {
+  const X = PERCH.x * T, Y = PERCH.y * T;
+  R(X + 4, Y + 13, 9, 3, "rgba(0,0,0,.22)");
+  R(X + 6, Y + 4, 4, 11, C.trunk); R(X + 6, Y + 4, 1, 11, "#8a6038");
+  R(X + 3, Y + 3, 10, 2, "#a8743f"); R(X + 3, Y + 5, 10, 1, "#5a3518");
+  if (BIRD.mode !== "perched") { R(X + 5, Y + 2, 1, 1, "#e8e0c8"); R(X + 9, Y + 1, 1, 1, "#e8e0c8"); }
+}
+function drawBird(t) {
+  const flying = BIRD.mode === "leaving" || BIRD.mode === "returning";
+  let x, y;
+  if (flying) { x = BIRD.x; y = BIRD.y; } else { const p = perchXY(); x = p.x; y = p.y - (t % 150 < 8 ? 1 : 0); }
+  x = Math.round(x); y = Math.round(y);
+  const face = BIRD.mode === "returning" ? -1 : 1;
+  const blue = "#4a7fd0", dark = "#2f5aa0", belly = "#f2a65a";
+  ctx.save();
+  if (face < 0) { ctx.translate(x * 2 + 8, 0); ctx.scale(-1, 1); }
+  if (!flying) R(x + 1, y + 7, 7, 1, "rgba(0,0,0,.15)");
+  R(x - 1, y + 3, 3, 2, dark);
+  R(x + 1, y + 2, 6, 5, blue);
+  R(x + 4, y, 4, 4, blue);
+  R(x + 2, y + 4, 4, 2, belly);
+  R(x + 6, y + 1, 1, 1, C.ink);
+  R(x + 8, y + 2, 2, 1, "#f2c14e");
+  if (flying) {
+    const up = Math.floor(t / 4) % 2;
+    if (up) R(x + 1, y - 2, 4, 3, dark); else R(x + 1, y + 5, 4, 3, dark);
+  } else {
+    R(x + 2, y + 3, 3, 2, dark);
+    R(x + 3, y + 7, 1, 1, C.ink); R(x + 5, y + 7, 1, 1, C.ink);
+  }
+  ctx.restore();
+}
+function updateBird() {
+  const p = perchXY();
+  if (BIRD.mode === "perched" && SERVER.running) { Object.assign(BIRD, { mode: "leaving", x: p.x, y: p.y, t: 0 }); }
+  if (BIRD.mode === "leaving") {
+    BIRD.t++; BIRD.x += 1.4; BIRD.y -= 1.1 + Math.sin(BIRD.t / 6) * 0.6;
+    if (BIRD.y < -16 || BIRD.x > 330) BIRD.mode = "away";
+  } else if (BIRD.mode === "away") {
+    if (!SERVER.running) Object.assign(BIRD, { mode: "returning", t: 0, from: { x: -14, y: 20 } });
+  } else if (BIRD.mode === "returning") {
+    BIRD.t++;
+    const k = Math.min(1, BIRD.t / 110), e = 1 - Math.pow(1 - k, 2);
+    BIRD.x = BIRD.from.x + (p.x - BIRD.from.x) * e;
+    BIRD.y = BIRD.from.y + (p.y - BIRD.from.y) * e - Math.sin(k * Math.PI) * 18 + Math.sin(BIRD.t / 5) * (1 - k);
+    if (k >= 1) {
+      BIRD.mode = "perched";
+      if (scene === "town" && !D.open) banner = { text: SERVER.lastError ? "WREN CAME BACK EMPTY" : "WREN IS BACK!", t: 130 };
+    }
+  }
+}
+function birdPages() {
+  const name = "WREN · MESSENGER BIRD";
+  if (BIRD.mode !== "perched") return [{ name: "PERCH", text: "An empty perch, with a feather on it. Wren is out fetching a fresh brief." }];
+  if (!SERVER.on) return [{ name, text: "Tweet! I'm Wren. I fly out and fetch fresh briefs, but only when Brief Town's server is running. Start it with npm start in the brief-town folder, then come find me." }];
+  if (!SERVER.configured) return [{ name, text: "Tweet! I'd love to fetch you a brief, but nobody's connected Slack, Gmail or Calendar for me to visit yet. Open Claude Code in the brief-town folder and say: set up Brief Town." }];
+  const pages = [];
+  if (SERVER.lastError) pages.push({ name, tag: "LAST TRIP", text: "My last trip didn't go well. " + SERVER.lastError });
+  else if (SERVER.lastOk) pages.push({ name, tag: "LAST TRIP", text: "I last brought a brief back at " + new Date(SERVER.lastOk).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "." });
+  pages.push({ name, tag: "A: SEND WREN  ·  B: STAY", text: "Want me to fly out and fetch a fresh brief? It usually takes a minute or two. I'll come straight back when it's ready.", onA: startFetch });
+  return pages;
+}
+
 function drawTown(t) {
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
     const v = map[y][x];
@@ -617,10 +695,12 @@ function drawTown(t) {
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (map[y][x] === 2) rows[y].push(() => drawTree(x, y));
   for (const k of Object.keys(HOUSES)) rows[HOUSES[k].y + 3].push(() => drawHouse(k, t));
   rows[BOARD.y].push(() => drawBoard(t));
+  rows[PERCH.y].push(() => { drawPerch(); if (BIRD.mode === "perched") drawBird(t); });
   const prow = Math.min(ROWS - 1, Math.ceil(P.py / T));
   if (!dogAway()) rows[Math.min(ROWS - 1, Math.ceil(DOG.py / T))].push(() => drawDog(t));
   rows[prow].push(() => drawPerson(P.px, P.py, P.dir, P.frame, KAT));
   rows.forEach(r => r.forEach(fn => fn()));
+  if (BIRD.mode === "leaving" || BIRD.mode === "returning") drawBird(t);
 }
 
 function drawInterior(k, t) {
@@ -702,10 +782,11 @@ function urgentUnique() {
 }
 function dogLevel() {
   const n = urgentUnique().length;
-  if (n === 0) return { n, key: "nap",     name: "NAPPING",  speed: 0,   pause: 400 };
-  if (n <= 2)  return { n, key: "alert",   name: "ALERT",    speed: 1,   pause: 160 };
-  if (n <= 4)  return { n, key: "pacing",  name: "PACING",   speed: 1,   pause: 50 };
-  return              { n, key: "zoomies", name: "ZOOMIES",  speed: 2,   pause: 8 };
+  /* wag: frames per tail flick (lower = faster). Byte walks at the same gentle pace whatever the mood. */
+  if (n === 0) return { n, key: "nap",     name: "NAPPING", wag: 0,  roams: false };
+  if (n <= 2)  return { n, key: "alert",   name: "ALERT",   wag: 18, roams: true  };
+  if (n <= 4)  return { n, key: "wiggly",  name: "WIGGLY",  wag: 6,  roams: true  };
+  return              { n, key: "frantic", name: "FRANTIC", wag: 2,  roams: false };
 }
 let scene = "town";
 let banner = { text: "BRIEF TOWN", t: 150 };
@@ -717,6 +798,7 @@ function blocked(tx, ty) {
     const v = map[ty][tx];
     if (v === 2 || v === 3) return true;
     if (tx === BOARD.x && ty === BOARD.y) return true;
+    if (tx === PERCH.x && ty === PERCH.y) return true;
     if (!dogAway() && tx === DOG.tx && ty === DOG.ty) return true;
     const hk = houseAt(tx, ty);
     if (hk) { const d = doorOf(hk); return !(d.x === tx && d.y === ty); }
@@ -761,7 +843,8 @@ function interact() {
   const [dx, dy] = DIRS[P.dir];
   const fx = P.tx + dx, fy = P.ty + dy;
   if (scene === "town") {
-    if (!dogAway() && fx === DOG.tx && fy === DOG.ty) openDialog(dogPages());
+    if (fx === PERCH.x && fy === PERCH.y) openDialog(birdPages());
+    else if (!dogAway() && fx === DOG.tx && fy === DOG.ty) openDialog(dogPages());
     else if (fx === BOARD.x && fy === BOARD.y) openDialog(boardPages());
     else { const hk = houseAt(fx, fy); if (hk) openDialog([{ name: "SIGN", text: `${HOUSES[hk].label} HOUSE. The door's at the front. Walk in to collect what's waiting.` }]); }
   } else if (P.dir === "up" && fy === IN.oy + 2 && fx >= IN.ox + 2 && fx <= IN.ox + 7) {
@@ -813,7 +896,7 @@ function housePages(k) {
 }
 function boardPages() {
   const name = "TOWN NOTICE BOARD";
-  if (SERVER.on && SERVER.running) return [{ name, tag: "POSTED", text: "GONE FETCHING. Byte has run off to collect a fresh brief. The houses will update when he's back." }];
+  if (SERVER.on && SERVER.running) return [{ name, tag: "POSTED", text: "GONE FETCHING. Wren has flown off to collect a fresh brief. The houses will update when she's back." }];
   if (SERVER.on && !SERVER.configured) return [{ name, tag: "POSTED", text: "This town isn't connected to anything yet, so you're looking at sample news. To connect Slack, Gmail and Calendar, open Claude Code in this folder and say: set up Brief Town." }];
   if (SERVER.on && SERVER.lastError) return [{ name, tag: "POSTED", text: "Byte couldn't fetch the last brief: " + SERVER.lastError }];
   const list = BRIEF.items.filter(i => i.house === "board");
@@ -845,6 +928,7 @@ function finishPage() {
 function advance() {
   const p = D.pages[D.i];
   if (!p.html && D.shown < p.text.length) { finishPage(); return; }
+  if (p.onA) { closeDialog(); p.onA(); return; }
   if (D.i < D.pages.length - 1) { D.i++; showPage(); } else closeDialog();
 }
 function closeDialog() { D.dog = false; D.open = false; D.el.classList.remove("open"); }
@@ -914,6 +998,7 @@ function update() {
     if (P.px === tx && P.py === ty) { P.moving = false; arrived(); }
   }
   updateDog();
+  updateBird();
   if (!P.moving && !D.open && !fadeDir && !modalOpen() && held.length) tryMove(held[held.length - 1]);
   if (!P.moving && !held.length) P.frame = 0;
   if (D.open) {
@@ -987,16 +1072,20 @@ async function pollStatus() {
   } catch { return; }
   statusTimer = setTimeout(pollStatus, SERVER.running ? 4000 : 30000);
 }
-fetchBtn.onclick = async () => {
+async function startFetch() {
   fetchBtn.disabled = true;
   try {
     const r = await fetch("api/refresh", { ...API, method: "POST" });
     const res = await r.json();
-    if (!res.started) { SERVER.lastError = res.reason; banner = { text: "CAN'T FETCH", t: 120 }; openDialog(boardPages()); }
-    else { closeDialog(); banner = { text: "BYTE RAN OFF TO FETCH!", t: 140 }; }
+    if (!res.started) { SERVER.lastError = res.reason; banner = { text: "CAN'T FETCH", t: 120 }; openDialog(birdPages()); }
+    else {
+      closeDialog(); SERVER.running = true; renderHud();
+      banner = { text: "WREN FLEW OFF TO FETCH!", t: 140 };
+    }
   } catch {}
   pollStatus();
-};
+}
+fetchBtn.onclick = startFetch;
 pollStatus();
 const go = () => requestAnimationFrame(t => { last = t; frame(t); });
 (document.fonts && document.fonts.load) ? document.fonts.load('8px "Press Start 2P"').then(go, go) : go();
