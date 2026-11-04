@@ -2,27 +2,12 @@
 
 A 16-bit town (`index.html`) that shows a daily admin brief built from the user's own Slack, Gmail and Google Calendar. `server.mjs` (Node 18+, no dependencies) serves the page on `127.0.0.1` and runs `claude -p` on a schedule to write `brief.local.txt`.
 
-## "Set up Brief Town"
+## Skills in this repo
 
-When the user asks to set this up, do these steps in order. Explain each one briefly as you go.
+- **`brief-town-setup`** (`.claude/skills/brief-town-setup/SKILL.md`): first-time setup. Use it when the user says "set up Brief Town" or `brief.config.json` is missing. A SessionStart hook (`.claude/hooks/check-setup.mjs`) tells you at startup when setup hasn't been done, so offer it in your first reply.
+- **`brief`** (`.claude/skills/brief/SKILL.md`): write a brief in chat when the user says "brief me", "EOD sweep" and similar. Uses `prompts/brief.md`.
 
-1. **Check prerequisites.** `node --version` must be 18 or higher. `claude --version` must work, since the server runs Claude Code headless.
-
-2. **Check the three connections.** Look at the MCP tools you have in this session (and `/mcp`) for Slack, Gmail and Google Calendar.
-   - If one is missing, tell the user which, and let them connect it themselves in Claude Code. Use `/mcp` to see and sign in to servers, or `claude mcp add` for a new one. Wait for them, then check again.
-   - Never ask for, accept or store API keys or tokens in this repo. Authentication lives in the user's Claude Code setup.
-   - It's fine to continue with only some services connected. The brief notes what it couldn't read.
-
-3. **Write `brief.config.json`** (gitignored), using `brief.config.example.json` as the template. Set `allowedTools` to the **exact names** of the read-only tools you can see for those services: tools that search, list, get or read messages, threads, channels and events.
-   - **Never** include a tool that sends, posts, replies, reacts, drafts, creates, updates, deletes, archives, labels, RSVPs or uploads. If you're not sure whether a tool only reads, leave it out.
-   - Show the user the list and get a yes before you save the file. This list is the only thing the scheduled runs are allowed to do. Everything else is denied, including Bash and file writes.
-   - Ask whether the default times work: morning brief at 07:50, end-of-day sweep at 16:25, weekdays, in the computer's local time. Adjust `schedule` if not.
-
-4. **Test it.** Run `npm run brief`. It runs one brief in the foreground and prints it. If it fails, read the error; it's usually a tool that isn't allowed or a service that isn't signed in. Fix `allowedTools` and re-run. Show the user the brief.
-
-5. **Start it.** Run `npm start` in the background and give the user `http://localhost:8000`. Tell them:
-   - Briefs refresh on schedule while the server is running, and talking to Wren the bird (or pressing **Fetch new brief**) gets one on demand.
-   - The server has to stay running for scheduled briefs. Offer to set it up to start at login (launchd on macOS, a systemd user service on Linux, Task Scheduler on Windows). Only do that if they say yes.
+Keep these skills, `prompts/brief.md` and the README in sync when you change the setup flow or the brief format.
 
 ## Hard rules
 
@@ -36,6 +21,7 @@ When the user asks to set this up, do these steps in order. Explain each one bri
 - `index.html`: the game. Parser: `parseBrief`, `routeItem`. Server hookup: `pollStatus`, `pollLocal`. Houses: `HOUSES`, `KEEPERS`. Dog: `dogLevel`, `drawDog`, `dogPages`. Bird: `BIRD`, `updateBird`, `birdPages`, `startFetch`.
 - `server.mjs`: static server, scheduler, `claude -p` runner. The brief must come back between `=====BRIEF START=====` and `=====BRIEF END=====`.
 - `prompts/brief.md`: what the brief run is asked to do. `{{NOW}}` and `{{MODE}}` are filled in by the server.
+- `.claude/skills/`, `.claude/hooks/check-setup.mjs`, `.claude/settings.json`: project skills and the setup hook. These are committed so a fresh clone works.
 - `sample-brief.txt` and the `SAMPLE` constant in `index.html`: fictional data. Keep them in sync and keep them fictional.
 
 After changing the game, test it in a browser: walk into each house, talk to the dog, send Wren to fetch.

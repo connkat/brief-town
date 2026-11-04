@@ -13,7 +13,7 @@ Briefs are written by Claude Code on your own computer, from your own accounts. 
 
 ## Setup
 
-You need [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) and Node 18+.
+You need [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) and Node 18+. If you don't have Node, Claude will offer to install it for you during setup.
 
 ```bash
 git clone <this repo> brief-town
@@ -21,20 +21,20 @@ cd brief-town
 claude
 ```
 
-Then say: **"set up Brief Town"**. Claude walks you through it (see `CLAUDE.md`):
+Claude notices Brief Town isn't set up yet and offers to do it (or say **"set up Brief Town"**). The setup skill ships in this repo at `.claude/skills/brief-town-setup`, so there's nothing else to install. Claude walks you through:
 
-1. **Connect Slack, Gmail and Google Calendar** in Claude Code, if they aren't already. You sign in to each one yourself through `/mcp`; nothing gets stored in this repo.
+1. **Connect Slack, Gmail and Google Calendar** in Claude Code, if they aren't already. You sign in to each one yourself through claude.ai connectors or `/mcp`; nothing gets stored in this repo.
 2. Claude lists the **read-only** tools those connections give it (search, list, read) and saves them to `brief.config.json` after you approve the list.
 3. It runs one test brief so you can check it.
 4. It starts the server. Open <http://localhost:8000>.
 
-To run it again later: `npm start`.
+To run it again later: `npm start`. For a brief in chat instead, open `claude` here and say **"brief me"** (the `brief` skill, also in this repo).
 
 | Command | What it does |
 |---|---|
 | `npm start` | Serve the game on localhost and fetch briefs on schedule |
 | `npm run brief` | Fetch one brief now and print it (morning before noon, sweep after) |
- `npm run brief:morning` / `brief:eod` | Force a particular kind |
+| `npm run brief:morning` / `brief:eod` | Force a particular kind |
 
 The schedule lives in `brief.config.json` and uses your computer's local time. The server has to be running for scheduled briefs. Claude can set it up to start at login if you ask.
 

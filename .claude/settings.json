@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-setup.mjs\" 2>/dev/null || echo 'Brief Town is not set up on this computer yet, and Node.js may not be installed (the setup check could not run). In your first reply, greet the user, explain in one or two plain sentences what Brief Town is, and offer to set it up now. If they agree, follow the brief-town-setup skill, starting with the Node.js check.'"
+          }
+        ]
+      }
+    ]
+  }
+}
