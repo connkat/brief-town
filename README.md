@@ -2,10 +2,9 @@
 
 A 16-bit town that turns your Slack, Gmail and Google Calendar into somewhere you can walk around.
 
-<img width="939" height="669" alt="Screenshot 2026-11-04 at 4 13 39 PM" src="https://github.com/user-attachments/assets/3fa9d888-2fa8-4f5f-b359-2f08081ae11f" />
-<img width="939" height="669" alt="Screenshot 2026-11-04 at 4 13 26 PM" src="https://github.com/user-attachments/assets/bb12a33d-3f9e-418f-b7f8-4ed866866ff0" />
 <img width="939" height="669" alt="Screenshot 2026-11-04 at 4 13 20 PM" src="https://github.com/user-attachments/assets/bb7d220f-bfad-4311-b226-abaa5a1ca75a" />
-
+<img width="939" height="669" alt="Screenshot 2026-11-04 at 4 13 26 PM" src="https://github.com/user-attachments/assets/bb12a33d-3f9e-418f-b7f8-4ed866866ff0" />
+<img width="939" height="669" alt="Screenshot 2026-11-04 at 4 13 39 PM" src="https://github.com/user-attachments/assets/3fa9d888-2fa8-4f5f-b359-2f08081ae11f" />
 
 - **Slack, Gmail and Calendar houses.** Walk through a door and the keeper reads out what needs you there, urgent things first.
 - **Notice board.** Holds the day's headline and "Shape of the day".
